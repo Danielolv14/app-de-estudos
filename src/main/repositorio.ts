@@ -21,7 +21,7 @@ const paraTarefa = (l: Linha): Tarefa => ({
 const paraEvento = (l: Linha): Evento => ({
   id: Number(l.id),
   materiaId: num(l.materia_id),
-  data: String(l.data),
+  data: l.data === null || l.data === undefined || l.data === '' ? null : String(l.data),
   titulo: String(l.titulo),
   tipo: String(l.tipo) as TipoEvento,
   pontos: num(l.pontos),
@@ -38,7 +38,9 @@ const paraSessao = (l: Linha): Sessao => ({
   fim: num(l.fim),
   estudoSeg: Number(l.estudo_seg),
   pausaSeg: Number(l.pausa_seg),
-  antesDaMeta: Number(l.antes_da_meta) === 1
+  antesDaMeta: Number(l.antes_da_meta) === 1,
+  checkinFeito: String(l.checkin_feito ?? ''),
+  checkinTravou: String(l.checkin_travou ?? '')
 })
 
 export type NovaTarefa = Omit<Tarefa, 'id' | 'feita' | 'ordem'> & { id?: number; feita?: boolean; ordem?: number }
@@ -94,6 +96,14 @@ export class Repositorio {
     this.banco.executar('UPDATE tarefas SET feita = ? WHERE id = ?', [feita ? 1 : 0, id])
   }
 
+  /** Muda a tarefa de dia e a coloca no fim da lista desse dia. */
+  moverTarefa(id: number, data: string): void {
+    const ordem = Number(
+      this.banco.um('SELECT COALESCE(MAX(ordem), -1) + 1 AS o FROM tarefas WHERE data = ? AND id <> ?', [data, id])?.o ?? 0
+    )
+    this.banco.executar('UPDATE tarefas SET data = ?, ordem = ? WHERE id = ?', [data, ordem, id])
+  }
+
   removerTarefa(id: number): void {
     this.banco.executar('DELETE FROM tarefas WHERE id = ?', [id])
   }
@@ -136,14 +146,14 @@ export class Repositorio {
     ])
   }
 
-  fecharSessao(id: number, f: { fim: number; estudoSeg: number; pausaSeg: number; antesDaMeta: boolean }): void {
-    this.banco.executar('UPDATE sessoes SET fim = ?, estudo_seg = ?, pausa_seg = ?, antes_da_meta = ? WHERE id = ?', [
-      f.fim,
-      f.estudoSeg,
-      f.pausaSeg,
-      f.antesDaMeta ? 1 : 0,
-      id
-    ])
+  fecharSessao(
+    id: number,
+    f: { fim: number; estudoSeg: number; pausaSeg: number; antesDaMeta: boolean; checkinFeito?: string; checkinTravou?: string }
+  ): void {
+    this.banco.executar(
+      'UPDATE sessoes SET fim = ?, estudo_seg = ?, pausa_seg = ?, antes_da_meta = ?, checkin_feito = ?, checkin_travou = ? WHERE id = ?',
+      [f.fim, f.estudoSeg, f.pausaSeg, f.antesDaMeta ? 1 : 0, f.checkinFeito ?? '', f.checkinTravou ?? '', id]
+    )
   }
 
   // ---------- Metas ajustadas à mão ----------

@@ -44,6 +44,59 @@ const EVENTOS: E[] = [
   ['2026-12-11', 'arq', 'Reavaliação de Arquitetura', 'reavaliacao']
 ]
 
+/** O que roda ao abrir o app: o plano inicial (banco vazio) e depois as atualizações de dados de cada versão. */
+export function prepararDados(repo: Repositorio): void {
+  semear(repo)
+  atualizarDados(repo)
+}
+
+type Nova = [titulo: string, data: string | null, tipo: TipoEvento, pontos: number, nota: number | null, meta?: number]
+
+// Notas de "Cálculo 1 (2026-2)" e "Arquitetura de Computadores (2026-2)" no vault, em 2026-11-05.
+// ADA e trabalho ainda não têm nota: entram com o que o Daniel costuma tirar como meta fixa.
+const NOTAS: Record<'Cálculo' | 'Arquitetura', Nova[]> = {
+  Cálculo: [
+    ['Prova 1 de Cálculo', null, 'prova', 25, 8],
+    ['Atividade avaliativa 1 de Cálculo', null, 'atividade', 10, 5],
+    ['Prova 2 de Cálculo', '2026-10-29', 'prova', 25, 13],
+    ['ADA de Cálculo', null, 'atividade', 5, null, 3],
+    ['Reavaliação de Cálculo', null, 'reavaliacao', 25, null]
+  ],
+  Arquitetura: [
+    ['Prova 1 de Arquitetura', '2026-09-11', 'prova', 30, 8],
+    ['Reposição da Prova 2 de Arquitetura', null, 'prova', 30, null],
+    ['Trabalho de Arquitetura', null, 'atividade', 5, null, 4],
+    ['ADA de Arquitetura', null, 'atividade', 5, null, 3]
+  ]
+}
+
+/** v1.1: as notas que já saíram, e as metas das provas passam a ser calculadas pelo app. */
+function atualizarDados(repo: Repositorio): void {
+  const versao = repo.lerKv<number>('versao_dados') ?? 1
+  if (versao >= 2) return
+  repo.banco.transacao(() => {
+    const eventos = repo.eventos()
+    for (const nome of ['Cálculo', 'Arquitetura'] as const) {
+      const materia = repo.materias().find((m) => m.nome === nome)
+      if (!materia) continue
+      const daMateria = eventos.filter((e) => e.materiaId === materia.id)
+      if (daMateria.some((e) => e.nota !== null)) continue // já lançou notas à mão
+      for (const [titulo, data, tipo, pontos, nota, meta] of NOTAS[nome]) {
+        if (daMateria.some((e) => e.titulo === titulo)) continue
+        repo.salvarEvento({ materiaId: materia.id, data, titulo, tipo, pontos, nota, meta: meta ?? null })
+      }
+      for (const e of daMateria) {
+        // As metas do plano antigo (7 na AA2, 16 na P3) viram automáticas.
+        const metaDoSeed = (e.titulo === 'Atividade avaliativa 2 de Cálculo' && e.meta === 7) || (e.titulo === 'Prova 3 de Cálculo' && e.meta === 16)
+        // Em Arquitetura, a P3 e a reavaliação valem 30.
+        const semPontos = nome === 'Arquitetura' && e.pontos === null && (e.tipo === 'prova' || e.tipo === 'reavaliacao')
+        if (metaDoSeed || semPontos) repo.salvarEvento({ ...e, meta: metaDoSeed ? null : e.meta, pontos: semPontos ? 30 : e.pontos })
+      }
+    }
+    repo.gravarKv('versao_dados', 2)
+  })
+}
+
 export function semear(repo: Repositorio): void {
   if (!repo.vazio()) return
   repo.banco.transacao(() => {

@@ -11,6 +11,7 @@ import {
   somarDias,
   textoContagem
 } from './regras'
+import { formatarNota, metaDe, metasAutomaticas, notasDaMateria, NOTA_MINIMA } from './notas'
 
 export type DadosResumo = {
   hoje: string
@@ -42,15 +43,41 @@ export function gerarResumo(d: DadosResumo): string {
   // Avaliações
   out.push('## Próximas avaliações')
   const prox = proximasAvaliacoes(d.eventos, d.hoje)
+  const automaticas = metasAutomaticas(d.eventos, d.materias)
+  const textoMeta = (e: Evento) => {
+    const m = metaDe(e, automaticas)
+    return m ? `${formatarNota(m.valor)}${m.automatica ? ' (calculada)' : ''}` : '-'
+  }
   if (prox.length === 0) out.push('Nenhuma avaliação marcada.')
   else {
     out.push('| Data | Matéria | Avaliação | Quando | Vale | Meta |', '|---|---|---|---|---|---|')
     for (const e of prox)
       out.push(
-        `| ${dia(e.data)} | ${materia(e.materiaId)} | ${celula(e.titulo)} | ${textoContagem(d.hoje, e.data)} | ${e.pontos ?? '-'} | ${e.meta ?? '-'} |`
+        `| ${dia(e.data)} | ${materia(e.materiaId)} | ${celula(e.titulo)} | ${textoContagem(d.hoje, e.data)} | ${e.pontos !== null ? formatarNota(e.pontos) : '-'} | ${textoMeta(e)} |`
       )
   }
   out.push('')
+
+  // Notas
+  const comNotas = d.materias.map((m) => ({ m, n: notasDaMateria(d.eventos, m.id) })).filter((x) => x.n.total > 0)
+  if (comNotas.length > 0) {
+    out.push(`## Notas (para passar: ${NOTA_MINIMA})`)
+    for (const { m, n } of comNotas) {
+      let situacao: string
+      if (n.situacao === 'garantido') situacao = `já passou, com ${formatarNota(n.obtido)}`
+      else if (n.situacao === 'folga') situacao = `chega a ${NOTA_MINIMA} com as metas fixadas`
+      else if (n.situacao === 'possivel')
+        situacao = `precisa de ${formatarNota(n.faltam)} dos ${formatarNota(n.emJogo)} pontos em jogo (${Math.ceil((n.fracao ?? 0) * 100 - 1e-6)}% de cada avaliação)`
+      else if (n.situacao === 'abaixo') situacao = `as metas fixadas não chegam a ${NOTA_MINIMA}`
+      else situacao = `não chega a ${NOTA_MINIMA} nem com a nota máxima no que falta`
+      out.push(`- **${m.nome}:** ${situacao}.`)
+      const faltando = n.avaliacoes.filter((e) => e.nota === null && metaDe(e, n.metas))
+      if (faltando.length > 0)
+        out.push(`  - Metas: ${faltando.map((e) => `${e.titulo} ${textoMeta(e)}`).join('; ')}.`)
+      if (n.trocada) out.push(`  - Supõe que a reavaliação entra no lugar da ${n.trocada.titulo} (${formatarNota(n.trocada.nota ?? 0)}).`)
+    }
+    out.push('')
+  }
 
   // Hoje
   const meta = metaDoDia(d.hoje, d.tarefas, d.metasDia)
@@ -101,11 +128,14 @@ export function gerarResumo(d: DadosResumo): string {
   out.push('## Últimas sessões')
   if (ultimas.length === 0) out.push('Nenhuma sessão ainda.')
   else {
-    out.push('| Dia | Matéria | Tarefa | Estudo | Pausa | Encerrou |', '|---|---|---|---|---|---|')
+    out.push(
+      '| Dia | Matéria | Tarefa | Estudo | Pausa | Encerrou | O que fez | Onde travou |',
+      '|---|---|---|---|---|---|---|---|'
+    )
     for (const s of ultimas) {
       const t = d.tarefas.find((x) => x.id === s.tarefaId)
       out.push(
-        `| ${dia(s.dia)} | ${materia(s.materiaId)} | ${celula(t?.titulo ?? '-')} | ${formatarDuracao(s.estudoSeg * 1000)} | ${formatarDuracao(s.pausaSeg * 1000)} | ${s.antesDaMeta ? 'antes da meta' : 'com a meta batida'} |`
+        `| ${dia(s.dia)} | ${materia(s.materiaId)} | ${celula(t?.titulo ?? '-')} | ${formatarDuracao(s.estudoSeg * 1000)} | ${formatarDuracao(s.pausaSeg * 1000)} | ${s.antesDaMeta ? 'antes da meta' : 'com a meta batida'} | ${celula(s.checkinFeito || '-')} | ${celula(s.checkinTravou || '-')} |`
       )
     }
   }

@@ -12,6 +12,7 @@ import {
 } from '@shared/regras'
 import { Digitos, Led, estiloMateria, nomeDe } from '../componentes/Basicos'
 import { Encerrar } from '../componentes/Encerrar'
+import { MoverAtrasada } from '../componentes/Atrasada'
 import { IconeParar, IconePausa, IconeTocar } from '../componentes/Icones'
 import { useAgora } from '../usarEstado'
 
@@ -73,6 +74,7 @@ export function Foco({ estado, abrirTrava }: { estado: Estado; abrirTrava: numbe
             {nomeDe(materias, t.materiaId)}
             {comData ? `, ${nomeDiaSemana(t.data, true)} ${diaMes(t.data)}` : ''}
           </span>
+          {comData && !t.feita && <MoverAtrasada tarefa={t} tarefas={tarefas} hoje={hoje} />}
         </li>
       ))}
     </ul>

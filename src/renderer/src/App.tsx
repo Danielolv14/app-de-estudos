@@ -2,19 +2,21 @@ import { useEffect, useState } from 'react'
 import type { Estado } from '@shared/tipos'
 import { diasAte, proximasAvaliacoes, textoContagem } from '@shared/regras'
 import { estiloMateria, Led, nomeDe } from './componentes/Basicos'
-import { IconeAjustes, IconeCalendario, IconeFechar, IconeFoco, IconePlano } from './componentes/Icones'
+import { IconeAjustes, IconeCalendario, IconeFechar, IconeFoco, IconeNotas, IconePlano } from './componentes/Icones'
 import { useEstado } from './usarEstado'
 import { Foco } from './telas/Foco'
 import { Plano } from './telas/Plano'
 import { Calendario } from './telas/Calendario'
+import { Notas } from './telas/Notas'
 import { Ajustes } from './telas/Ajustes'
 
-type Tela = 'foco' | 'plano' | 'calendario' | 'ajustes'
+type Tela = 'foco' | 'plano' | 'calendario' | 'notas' | 'ajustes'
 
 const TELAS: { id: Tela; nome: string; Icone: typeof IconeFoco }[] = [
   { id: 'foco', nome: 'Foco', Icone: IconeFoco },
   { id: 'plano', nome: 'Plano', Icone: IconePlano },
   { id: 'calendario', nome: 'Calendário', Icone: IconeCalendario },
+  { id: 'notas', nome: 'Notas', Icone: IconeNotas },
   { id: 'ajustes', nome: 'Ajustes', Icone: IconeAjustes }
 ]
 
@@ -47,6 +49,7 @@ export function App() {
         {tela === 'foco' && <Foco estado={estado} abrirTrava={abrirTrava} />}
         {tela === 'plano' && <Plano estado={estado} />}
         {tela === 'calendario' && <Calendario estado={estado} />}
+        {tela === 'notas' && <Notas estado={estado} />}
         {tela === 'ajustes' && <Ajustes estado={estado} />}
       </main>
 

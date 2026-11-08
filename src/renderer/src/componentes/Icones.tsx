@@ -36,6 +36,16 @@ export const IconeCalendario = ({ tamanho }: P) => (
   </svg>
 )
 
+/** Um medidor com ponteiro: quanto falta para chegar a 60. */
+export const IconeNotas = ({ tamanho }: P) => (
+  <svg {...base(tamanho)}>
+    <path d="M3.5 16.5a8.5 8.5 0 0 1 17 0" />
+    <path d="M12 16.5l4.2-5.2" />
+    <circle cx="12" cy="16.5" r="1.3" />
+    <path d="M5 20h14" />
+  </svg>
+)
+
 export const IconeAjustes = ({ tamanho }: P) => (
   <svg {...base(tamanho)}>
     <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />

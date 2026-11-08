@@ -1,6 +1,6 @@
 // Sessão de estudo: começa ligada a uma tarefa, pausa sem desbloquear e só encerra
 // livre quando a meta do dia foi batida. Antes disso, precisa da frase da trava.
-import type { ResultadoEncerrar, SessaoAtiva } from '@shared/tipos'
+import type { PedidoEncerrar, ResultadoEncerrar, SessaoAtiva } from '@shared/tipos'
 import {
   dataLocal,
   estudadoNoDia,
@@ -128,19 +128,22 @@ export class GerenciadorSessao {
     }
   }
 
-  encerrar(p: { frase?: string; marcarFeita: boolean }): ResultadoEncerrar {
+  encerrar(p: PedidoEncerrar): ResultadoEncerrar {
     const a = this.ativa()
     if (!a) return { ok: false, motivo: 'sem-sessao' }
     const trava = this.situacaoTrava()
     if (!trava.livre && !fraseConfere(p.frase ?? '', trava.frase)) return { ok: false, motivo: 'frase' }
 
     const agora = this.g.agora()
+    const linha = (s?: string) => (s ?? '').replace(/\s+/g, ' ').trim().slice(0, 300)
     this.repo.banco.transacao(() => {
       this.repo.fecharSessao(a.sessaoId, {
         fim: agora,
         estudoSeg: Math.round(estudoMs(a, agora) / 1000),
         pausaSeg: Math.round(pausaMs(a, agora) / 1000),
-        antesDaMeta: !trava.livre
+        antesDaMeta: !trava.livre,
+        checkinFeito: linha(p.feito),
+        checkinTravou: linha(p.travou)
       })
       if (p.marcarFeita && a.tarefaId) this.repo.marcarTarefa(a.tarefaId, true)
       this.repo.salvarSessaoAtiva(null)

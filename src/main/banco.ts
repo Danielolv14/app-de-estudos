@@ -25,7 +25,7 @@ CREATE INDEX IF NOT EXISTS tarefas_data ON tarefas(data);
 CREATE TABLE IF NOT EXISTS eventos (
   id INTEGER PRIMARY KEY,
   materia_id INTEGER REFERENCES materias(id) ON DELETE SET NULL,
-  data TEXT NOT NULL,
+  data TEXT,
   titulo TEXT NOT NULL,
   tipo TEXT NOT NULL,
   pontos REAL,
@@ -41,7 +41,9 @@ CREATE TABLE IF NOT EXISTS sessoes (
   fim INTEGER,
   estudo_seg INTEGER NOT NULL DEFAULT 0,
   pausa_seg INTEGER NOT NULL DEFAULT 0,
-  antes_da_meta INTEGER NOT NULL DEFAULT 0
+  antes_da_meta INTEGER NOT NULL DEFAULT 0,
+  checkin_feito TEXT NOT NULL DEFAULT '',
+  checkin_travou TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS sessoes_dia ON sessoes(dia);
 CREATE TABLE IF NOT EXISTS metas_dia (
@@ -70,7 +72,46 @@ export class Banco {
     const dados = arquivo && existsSync(arquivo) ? readFileSync(arquivo) : undefined
     const db = new SQL.Database(dados)
     db.exec(ESQUEMA)
-    return new Banco(db, arquivo)
+    const banco = new Banco(db, arquivo)
+    if (banco.atualizarEsquema()) banco.salvarDepois()
+    return banco
+  }
+
+  private colunas(tabela: string): { nome: string; obrigatoria: boolean }[] {
+    return this.todos(`PRAGMA table_info(${tabela})`).map((l) => ({ nome: String(l.name), obrigatoria: Number(l.notnull) === 1 }))
+  }
+
+  /** Bancos criados pela v1.0: a data do evento passa a poder ficar vazia, e as sessões ganham o check-in. */
+  private atualizarEsquema(): boolean {
+    let mudou = false
+    if (this.colunas('eventos').find((c) => c.nome === 'data')?.obrigatoria) {
+      this.transacao(() => {
+        this.db.exec(`
+          CREATE TABLE eventos_novo (
+            id INTEGER PRIMARY KEY,
+            materia_id INTEGER REFERENCES materias(id) ON DELETE SET NULL,
+            data TEXT,
+            titulo TEXT NOT NULL,
+            tipo TEXT NOT NULL,
+            pontos REAL,
+            meta REAL,
+            nota REAL
+          );
+          INSERT INTO eventos_novo SELECT id, materia_id, data, titulo, tipo, pontos, meta, nota FROM eventos;
+          DROP TABLE eventos;
+          ALTER TABLE eventos_novo RENAME TO eventos;
+        `)
+      })
+      mudou = true
+    }
+    const sessoes = this.colunas('sessoes').map((c) => c.nome)
+    for (const coluna of ['checkin_feito', 'checkin_travou']) {
+      if (!sessoes.includes(coluna)) {
+        this.db.exec(`ALTER TABLE sessoes ADD COLUMN ${coluna} TEXT NOT NULL DEFAULT ''`)
+        mudou = true
+      }
+    }
+    return mudou
   }
 
   todos(sql: string, params: SqlValue[] = []): Linha[] {

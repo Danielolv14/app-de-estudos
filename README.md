@@ -9,6 +9,12 @@ e bloqueio de Instagram, WhatsApp Web e jogos enquanto a sessão estiver aberta.
 - **Timer:** conta para cima, ligado a uma tarefa do plano. Pausar não desbloqueia nada.
 - **Meta do dia:** soma das horas previstas nas tarefas do dia (dá para ajustar na tela Plano).
 - **Trava:** antes de bater a meta, encerrar pede uma frase digitada (colar não funciona).
+- **Check-in:** ao encerrar, dois campos opcionais (o que fez e onde travou) ficam guardados na sessão, aparecem na
+  tela Plano e vão para o resumo do vault.
+- **Notas:** a tela Notas mostra quanto falta para chegar a 60 em cada matéria e calcula a meta de cada avaliação
+  que falta. Uma meta escrita à mão vale como fixa; a reavaliação entra no lugar da prova de menor nota quando isso
+  ajuda.
+- **Tarefas atrasadas:** um botão passa a tarefa para hoje ou para o próximo dia que já tem tarefa da mesma matéria.
 - **Bloqueio de sites:** um serviço do Windows (tarefa agendada que roda como SYSTEM) mantém um bloco no arquivo
   `hosts` enquanto a sessão estiver aberta. O app só escreve um pedido em `C:\ProgramData\AppDeEstudos\pedido.json`;
   o serviço aceita apenas nomes de domínio e sempre aponta para `0.0.0.0`.
@@ -35,7 +41,8 @@ npm run dev
 npm test
 ```
 
-Cobrem as regras (timer, meta, trava, lembrete), o banco, a sessão, o resumo do vault, o serviço de bloqueio
+Cobrem as regras (timer, meta, trava, lembrete), a calculadora de nota, o banco (inclusive a atualização de um
+banco da v1.0), a sessão, o resumo do vault, o serviço de bloqueio
 (rodando o `.ps1` de verdade contra um `hosts` falso) e o vigia de apps (com `ping` no lugar de um app real).
 
 Capturas de tela sem tocar no bloqueio nem nos seus dados:

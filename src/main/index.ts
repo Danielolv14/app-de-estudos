@@ -3,12 +3,12 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, s
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
-import type { Config, Estado, StatusBloqueio } from '@shared/tipos'
+import type { Config, Estado, PedidoEncerrar, StatusBloqueio } from '@shared/tipos'
 import { dataLocal, estudoMs, formatarDuracao } from '@shared/regras'
 import { gerarResumo } from '@shared/resumo'
 import { Banco } from './banco'
 import { Repositorio, type NovaTarefa, type NovoEvento } from './repositorio'
-import { semear } from './seed'
+import { prepararDados } from './seed'
 import { GerenciadorSessao } from './sessao'
 import { ControleBloqueio, desinstalarServico, instalarServico, nomeAmigavel, statusBloqueio } from './bloqueio'
 import { Lembretes } from './lembrete'
@@ -298,9 +298,10 @@ function registrarIpc(): void {
   h('sessao:retomar', () => sessao.retomar())
   h('sessao:trocarTarefa', (tarefaId: number | null) => sessao.trocarTarefa(tarefaId))
   h('sessao:trava', () => sessao.situacaoTrava())
-  h('sessao:encerrar', (p: { frase?: string; marcarFeita: boolean }) => sessao.encerrar(p))
+  h('sessao:encerrar', (p: PedidoEncerrar) => sessao.encerrar(p))
   h('tarefa:salvar', (t: NovaTarefa) => repo.salvarTarefa(t))
   h('tarefa:marcar', (id: number, feita: boolean) => repo.marcarTarefa(id, feita))
+  h('tarefa:mover', (id: number, data: string) => repo.moverTarefa(id, data))
   h('tarefa:remover', (id: number) => repo.removerTarefa(id))
   h('evento:salvar', (e: NovoEvento) => repo.salvarEvento(e))
   h('evento:remover', (id: number) => repo.removerEvento(id))
@@ -390,7 +391,7 @@ async function capturar(pasta: string): Promise<void> {
     mudou()
     await esperar(800)
   }
-  for (const tela of ['foco', 'plano', 'calendario', 'ajustes']) {
+  for (const tela of ['foco', 'plano', 'calendario', 'notas', 'ajustes']) {
     w.webContents.send('navegar', tela)
     await esperar(900)
     writeFileSync(join(pasta, `${tela}.png`), (await w.webContents.capturePage()).toPNG())
@@ -428,7 +429,7 @@ app.on('before-quit', () => {
 app.whenReady().then(async () => {
   const banco = await Banco.abrir(join(app.getPath('userData'), 'estudos.sqlite'), require.resolve('sql.js/dist/sql-wasm.wasm'))
   repo = new Repositorio(banco)
-  semear(repo)
+  prepararDados(repo)
   configurarPrimeiraVez()
 
   // Steam e outros abrem vários processos de uma vez: avisa uma vez por app a cada minuto.

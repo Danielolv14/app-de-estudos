@@ -1,4 +1,4 @@
-import type { Config, Estado, Evento, Materia, ResultadoEncerrar, SessaoAtiva, Tarefa } from '../shared/tipos'
+import type { Config, Estado, Evento, Materia, PedidoEncerrar, ResultadoEncerrar, SessaoAtiva, Tarefa } from '../shared/tipos'
 
 export type SituacaoTrava = { livre: boolean; metaMin: number; estudadoMs: number; faltamMin: number; frase: string }
 export type Resultado = { ok: boolean; mensagem: string }
@@ -13,9 +13,10 @@ export type Api = {
   retomar(): Promise<void>
   trocarTarefa(tarefaId: number | null): Promise<void>
   trava(): Promise<SituacaoTrava>
-  encerrar(p: { frase?: string; marcarFeita: boolean }): Promise<ResultadoEncerrar>
+  encerrar(p: PedidoEncerrar): Promise<ResultadoEncerrar>
   salvarTarefa(t: Omit<Tarefa, 'id' | 'feita' | 'ordem'> & { id?: number }): Promise<number>
   marcarTarefa(id: number, feita: boolean): Promise<void>
+  moverTarefa(id: number, data: string): Promise<void>
   removerTarefa(id: number): Promise<void>
   salvarEvento(e: Omit<Evento, 'id'> & { id?: number }): Promise<number>
   removerEvento(id: number): Promise<void>

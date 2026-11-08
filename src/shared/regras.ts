@@ -94,15 +94,26 @@ export function podeEncerrarLivre(metaMin: number, estudadoMsHoje: number): bool
 
 // ---------- Trava ----------
 
-/** Próximas avaliações (provas, atividades e reavaliações) a partir de hoje, em ordem. */
-export function proximasAvaliacoes(eventos: Evento[], hoje: string): Evento[] {
+export type EventoComData = Evento & { data: string }
+
+/** Próximas avaliações (provas, atividades e reavaliações) com data, a partir de hoje, em ordem. */
+export function proximasAvaliacoes(eventos: Evento[], hoje: string): EventoComData[] {
   return eventos
+    .filter((e): e is EventoComData => e.data !== null)
     .filter((e) => e.tipo !== 'aula' && e.tipo !== 'outro' && diasAte(hoje, e.data) >= 0)
     .sort((a, b) => a.data.localeCompare(b.data) || a.id - b.id)
 }
 
+// ---------- Tarefas atrasadas ----------
+
+/** Próximo dia (depois de hoje) que já tem tarefa da mesma matéria no plano. */
+export function proximoDiaDaMateria(tarefas: Tarefa[], materiaId: number | null, hoje: string): string | null {
+  const datas = tarefas.filter((t) => t.materiaId === materiaId && t.data > hoje).map((t) => t.data)
+  return datas.length === 0 ? null : datas.reduce((a, b) => (b < a ? b : a))
+}
+
 /** Frase que precisa ser digitada para encerrar antes da meta. */
-export function fraseTrava(hoje: string, faltamMin: number, proxima: Evento | null): string {
+export function fraseTrava(hoje: string, faltamMin: number, proxima: EventoComData | null): string {
   const tempo = formatarDuracao(faltamMin * MINUTO)
   if (proxima) {
     const dias = diasAte(hoje, proxima.data)

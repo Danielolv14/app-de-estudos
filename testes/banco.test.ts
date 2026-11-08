@@ -1,11 +1,13 @@
 import { createRequire } from 'node:module'
-import { mkdtempSync, existsSync } from 'node:fs'
+import { mkdtempSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import initSqlJs from 'sql.js'
 import { describe, expect, it } from 'vitest'
 import { Banco } from '../src/main/banco'
 import { Repositorio } from '../src/main/repositorio'
-import { semear } from '../src/main/seed'
+import { prepararDados, semear } from '../src/main/seed'
+import { notasDaMateria } from '@shared/notas'
 
 const wasm = createRequire(import.meta.url).resolve('sql.js/dist/sql-wasm.wasm')
 
@@ -47,6 +49,71 @@ describe('banco e repositório', () => {
     expect(repo.config().dominios).toContain('web.whatsapp.com')
     repo.salvarConfig({ ...repo.config(), insistirMin: 5 })
     expect(repo.config().insistirMin).toBe(5)
+  })
+
+  it('v1.1: importa as notas que já saíram e as metas das provas passam a ser calculadas', async () => {
+    const repo = new Repositorio(await Banco.abrir(null, wasm))
+    prepararDados(repo)
+    prepararDados(repo) // abrir de novo não duplica nada
+    const [calc, arq] = repo.materias()
+    const eventos = repo.eventos()
+    expect(eventos.filter((e) => e.titulo === 'Prova 1 de Cálculo')).toHaveLength(1)
+    expect(eventos.find((e) => e.titulo === 'Prova 3 de Cálculo')).toMatchObject({ meta: null, pontos: 25 })
+    expect(eventos.find((e) => e.titulo === 'Reavaliação de Cálculo')).toMatchObject({ data: null, pontos: 25 })
+    expect(eventos.find((e) => e.titulo === 'Prova 3 de Arquitetura')?.pontos).toBe(30)
+    expect(notasDaMateria(eventos, calc.id).faltam).toBe(39)
+    expect(notasDaMateria(eventos, arq.id).faltam).toBe(53)
+  })
+
+  it('v1.1: não importa as notas se você já lançou alguma à mão', async () => {
+    const repo = new Repositorio(await Banco.abrir(null, wasm))
+    semear(repo)
+    const p3 = repo.eventos().find((e) => e.titulo === 'Prova 3 de Cálculo')!
+    repo.salvarEvento({ ...p3, nota: 20 })
+    prepararDados(repo)
+    expect(repo.eventos().some((e) => e.titulo === 'Prova 1 de Cálculo')).toBe(false)
+    expect(repo.eventos().some((e) => e.titulo === 'Prova 1 de Arquitetura')).toBe(true)
+  })
+
+  it('atualiza um banco da v1.0: a data do evento pode ficar vazia e as sessões ganham o check-in', async () => {
+    const arquivo = join(mkdtempSync(join(tmpdir(), 'estudos-')), 'estudos.sqlite')
+    const SQL = await initSqlJs({ wasmBinary: readFileSync(wasm) as unknown as ArrayBuffer })
+    const antigo = new SQL.Database()
+    antigo.exec(`
+      CREATE TABLE materias (id INTEGER PRIMARY KEY, nome TEXT NOT NULL, cor TEXT NOT NULL);
+      CREATE TABLE eventos (id INTEGER PRIMARY KEY, materia_id INTEGER REFERENCES materias(id) ON DELETE SET NULL,
+        data TEXT NOT NULL, titulo TEXT NOT NULL, tipo TEXT NOT NULL, pontos REAL, meta REAL, nota REAL);
+      CREATE TABLE sessoes (id INTEGER PRIMARY KEY, tarefa_id INTEGER, materia_id INTEGER, dia TEXT NOT NULL,
+        inicio INTEGER NOT NULL, fim INTEGER, estudo_seg INTEGER NOT NULL DEFAULT 0, pausa_seg INTEGER NOT NULL DEFAULT 0,
+        antes_da_meta INTEGER NOT NULL DEFAULT 0);
+      INSERT INTO materias VALUES (1, 'Física', '#fff');
+      INSERT INTO eventos VALUES (7, 1, '2026-12-01', 'Prova de Física', 'prova', 30, 18, NULL);
+      INSERT INTO sessoes (id, dia, inicio, fim, estudo_seg) VALUES (3, '2026-11-10', 1, 2, 600);
+    `)
+    writeFileSync(arquivo, Buffer.from(antigo.export()))
+    antigo.close()
+
+    const banco = await Banco.abrir(arquivo, wasm)
+    const repo = new Repositorio(banco)
+    expect(repo.eventos()).toEqual([
+      { id: 7, materiaId: 1, data: '2026-12-01', titulo: 'Prova de Física', tipo: 'prova', pontos: 30, meta: 18, nota: null }
+    ])
+    expect(repo.sessoes()[0]).toMatchObject({ id: 3, estudoSeg: 600, checkinFeito: '', checkinTravou: '' })
+    const id = repo.salvarEvento({ materiaId: 1, data: null, titulo: 'Reavaliação', tipo: 'reavaliacao', pontos: 30, meta: null, nota: null })
+    expect(repo.eventos().find((e) => e.id === id)?.data).toBeNull()
+    // Apagar a matéria ainda solta o evento (a chave estrangeira sobreviveu à troca de tabela).
+    repo.removerMateria(1)
+    expect(repo.eventos().every((e) => e.materiaId === null)).toBe(true)
+    banco.fechar()
+  })
+
+  it('move a tarefa para outro dia, no fim da lista', async () => {
+    const repo = new Repositorio(await Banco.abrir(null, wasm))
+    semear(repo)
+    const atrasada = repo.tarefas().find((t) => t.data === '2026-11-06')!
+    repo.moverTarefa(atrasada.id, '2026-11-13')
+    const doDia = repo.tarefas().filter((t) => t.data === '2026-11-13')
+    expect(doDia.map((t) => t.id).at(-1)).toBe(atrasada.id)
   })
 
   it('grava no arquivo e lê de volta', async () => {

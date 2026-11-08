@@ -15,6 +15,7 @@ import {
   pausar,
   podeEncerrarLivre,
   proximasAvaliacoes,
+  proximoDiaDaMateria,
   recuperar,
   retomar
 } from '@shared/regras'
@@ -95,14 +96,30 @@ describe('meta do dia e trava', () => {
     const eventos = [
       { id: 1, data: '2026-11-13', tipo: 'aula', titulo: 'Aula 15' },
       { id: 2, data: '2026-11-26', tipo: 'atividade', titulo: 'Atividade avaliativa 2 de Cálculo' },
-      { id: 3, data: '2026-11-05', tipo: 'prova', titulo: 'P2 antiga' }
+      { id: 3, data: '2026-11-05', tipo: 'prova', titulo: 'P2 antiga' },
+      { id: 4, data: null, tipo: 'reavaliacao', titulo: 'Reavaliação sem data' }
     ] as Evento[]
+    expect(proximasAvaliacoes(eventos, '2026-11-10').map((e) => e.id)).toEqual([2])
     const proxima = proximasAvaliacoes(eventos, '2026-11-10')[0]
     expect(proxima.id).toBe(2)
     const frase = fraseTrava('2026-11-10', 48, proxima)
     expect(frase).toBe('Vou parar 48 min antes da meta de hoje, mesmo faltando 16 dias para a Atividade avaliativa 2 de Cálculo.')
     expect(fraseConfere('vou parar 48 min antes da meta de hoje mesmo faltando 16 dias para a atividade avaliativa 2 de calculo', frase)).toBe(true)
     expect(fraseConfere('vou parar', frase)).toBe(false)
+  })
+})
+
+describe('tarefas atrasadas', () => {
+  it('acha o próximo dia que já tem tarefa da mesma matéria', () => {
+    const tarefas = [
+      { id: 1, materiaId: 2, data: '2026-11-06' },
+      { id: 2, materiaId: 1, data: '2026-11-11' },
+      { id: 3, materiaId: 2, data: '2026-11-20' },
+      { id: 4, materiaId: 2, data: '2026-11-13' }
+    ] as Tarefa[]
+    expect(proximoDiaDaMateria(tarefas, 2, '2026-11-10')).toBe('2026-11-13')
+    expect(proximoDiaDaMateria(tarefas, 2, '2026-11-13')).toBe('2026-11-20')
+    expect(proximoDiaDaMateria(tarefas, 3, '2026-11-10')).toBeNull()
   })
 })
 

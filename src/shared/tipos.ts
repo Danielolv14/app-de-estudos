@@ -24,12 +24,13 @@ export type TipoEvento = 'prova' | 'atividade' | 'reavaliacao' | 'aula' | 'outro
 export type Evento = {
   id: number
   materiaId: number | null
-  data: string
+  /** AAAA-MM-DD, ou nulo quando a data ainda não saiu (ex.: reavaliação a confirmar, ADA). */
+  data: string | null
   titulo: string
   tipo: TipoEvento
   /** Quanto a avaliação vale (ex.: 25). */
   pontos: number | null
-  /** Nota que você quer tirar. */
+  /** Meta fixada à mão. Vazia, o app calcula quanto precisa tirar (calculadora de nota). */
   meta: number | null
   /** Nota que tirou, depois da prova. */
   nota: number | null
@@ -47,6 +48,9 @@ export type Sessao = {
   pausaSeg: number
   /** Encerrada com a frase da trava, antes de bater a meta. */
   antesDaMeta: boolean
+  /** Check-in do fim da sessão: o que foi feito e onde travou (os dois podem ficar vazios). */
+  checkinFeito: string
+  checkinTravou: string
 }
 
 export type StatusTimer = 'estudando' | 'pausado'
@@ -124,3 +128,12 @@ export type Estado = {
 }
 
 export type ResultadoEncerrar = { ok: true } | { ok: false; motivo: 'frase' | 'sem-sessao' }
+
+export type PedidoEncerrar = {
+  frase?: string
+  marcarFeita: boolean
+  /** Check-in: o que foi feito na sessão. */
+  feito?: string
+  /** Check-in: onde travou. */
+  travou?: string
+}

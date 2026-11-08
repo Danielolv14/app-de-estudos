@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Estado, Evento } from '@shared/tipos'
 import { dataLocal, diaMes, diasAte, formatarDuracao, metaDoDia, nomeDiaSemana, paraData, proximasAvaliacoes, textoContagem } from '@shared/regras'
+import { formatarNota, metaDe, metasAutomaticas } from '@shared/notas'
 import { estiloMateria, nomeDe } from '../componentes/Basicos'
 import { FormEvento } from '../componentes/Formularios'
 import { IconeMais, IconeSeta } from '../componentes/Icones'
@@ -27,6 +28,7 @@ export function Calendario({ estado }: { estado: Estado }) {
 
   const mudarMes = (n: number) => setMes(new Date(mes.getFullYear(), mes.getMonth() + n, 1))
   const proximas = proximasAvaliacoes(eventos, hoje)
+  const automaticas = metasAutomaticas(eventos, materias)
 
   return (
     <div>
@@ -104,6 +106,7 @@ export function Calendario({ estado }: { estado: Estado }) {
             <ul className="lista-provas">
               {proximas.map((e) => {
                 const dias = diasAte(hoje, e.data)
+                const meta = metaDe(e, automaticas)
                 return (
                   <li key={e.id} style={estiloMateria(materias, e.materiaId)}>
                     <div className="contador" aria-label={textoContagem(hoje, e.data)}>
@@ -116,8 +119,8 @@ export function Calendario({ estado }: { estado: Estado }) {
                       <div className="lista-provas__titulo">{e.titulo}</div>
                       <div className="lista-provas__extra">
                         {nomeDiaSemana(e.data)}, {diaMes(e.data)}. {nomeDe(materias, e.materiaId)}
-                        {e.pontos !== null ? `, vale ${e.pontos}` : ''}
-                        {e.meta !== null ? `, meta ${e.meta}` : ''}
+                        {e.pontos !== null ? `, vale ${formatarNota(e.pontos)}` : ''}
+                        {meta && meta.valor > 0 ? `, meta ${formatarNota(meta.valor)}` : ''}
                       </div>
                     </div>
                   </li>

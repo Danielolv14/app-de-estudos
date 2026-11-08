@@ -921,6 +921,376 @@ h2 {
   color: var(--texto-3);
 }
 
+/* ---------- Notas (calculadora) ---------- */
+
+.notas {
+  max-width: 980px;
+}
+
+.boletim {
+  padding: 20px 22px;
+}
+
+.boletim__topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.boletim__nome {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+
+.boletim__nome .ponto {
+  width: 9px;
+  height: 9px;
+}
+
+.boletim__frase {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--texto-2);
+}
+
+/* Visor pequeno com a porcentagem: o mesmo âmbar do timer. */
+.mostrador {
+  flex: none;
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.mostrador__visor {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 9px 12px 8px 14px;
+  border-radius: 10px;
+  background: var(--poco);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.9),
+    0 1px 0 var(--linha);
+}
+
+.mostrador__digitos {
+  display: grid;
+  font-family: 'SegmentosMini', monospace;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.mostrador__digitos > span {
+  grid-area: 1 / 1;
+}
+
+.mostrador__fantasma {
+  color: rgba(255, 177, 61, 0.06);
+}
+
+.mostrador__aceso {
+  color: var(--ambar);
+  text-shadow: 0 0 9px rgba(255, 168, 46, 0.45);
+}
+
+.mostrador__pct {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ambar);
+}
+
+.mostrador--alto .mostrador__aceso,
+.mostrador--alto .mostrador__pct {
+  color: var(--vermelho);
+  text-shadow: 0 0 9px rgba(255, 106, 87, 0.45);
+}
+
+.mostrador small {
+  font-size: 11.5px;
+  color: var(--texto-3);
+}
+
+.mostrador--ok {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--corpo-baixo);
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.5),
+    0 1px 0 var(--linha);
+  font-weight: 500;
+}
+
+/* Régua de 0 a 100 com a marca no 60. */
+.regua {
+  margin: 20px 0 4px;
+}
+
+.regua__trilho {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--poco);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.85),
+    0 1px 0 var(--linha);
+}
+
+.regua__obtido,
+.regua__previsto,
+.regua__falta {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+}
+
+.regua__obtido {
+  left: 2px;
+  border-radius: 5px 0 0 5px;
+  background: var(--cor-materia, var(--texto-2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 0 8px color-mix(in srgb, var(--cor-materia, #888) 45%, transparent);
+}
+
+.regua__previsto {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--cor-materia, #888) 55%, transparent) 0 4px,
+    color-mix(in srgb, var(--cor-materia, #888) 18%, transparent) 4px 8px
+  );
+}
+
+.regua__falta {
+  border: 1px dashed rgba(255, 177, 61, 0.6);
+  border-radius: 0 5px 5px 0;
+  background: var(--ambar-fantasma);
+}
+
+.regua__marca {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--texto);
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.35);
+}
+
+.regua__escala {
+  position: relative;
+  height: 18px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--texto-3);
+}
+
+.regua__escala span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.regua__escala span:first-child {
+  transform: none;
+}
+
+.regua__escala span:last-child {
+  transform: translateX(-100%);
+}
+
+.regua__legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 12.5px;
+  color: var(--texto-2);
+}
+
+.regua__legenda span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.regua__amostra {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.regua__amostra--obtido {
+  background: var(--cor-materia, var(--texto-2));
+}
+
+.regua__amostra--previsto {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--cor-materia, #888) 60%, transparent) 0 2px,
+    color-mix(in srgb, var(--cor-materia, #888) 20%, transparent) 2px 4px
+  );
+}
+
+.regua__amostra--falta {
+  border: 1px dashed rgba(255, 177, 61, 0.7);
+  background: var(--ambar-fantasma);
+}
+
+.boletim__tabela {
+  margin-top: 16px;
+}
+
+.boletim__linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px 52px 84px 210px;
+  gap: 12px;
+  align-items: center;
+  padding: 7px 4px;
+}
+
+.boletim__linha + .boletim__linha {
+  border-top: 1px solid var(--sombra-linha);
+  box-shadow: inset 0 1px 0 var(--linha);
+}
+
+.boletim__linha--cabecalho {
+  padding-bottom: 6px;
+  font-size: 12px;
+  color: var(--texto-3);
+}
+
+.boletim__titulo {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--texto);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.boletim__titulo:hover {
+  text-decoration: underline dotted rgba(255, 255, 255, 0.3);
+  text-underline-offset: 3px;
+}
+
+.boletim__linha--trocada .boletim__titulo {
+  color: var(--texto-3);
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+}
+
+.boletim__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.valor-editavel {
+  min-width: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--texto);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline dotted rgba(255, 255, 255, 0.25);
+  text-underline-offset: 3px;
+}
+
+.valor-editavel--auto {
+  color: var(--ambar);
+}
+
+.campo-nota {
+  text-align: center;
+}
+
+.boletim__nota-rodape {
+  margin: 12px 0 0;
+  max-width: 82ch;
+  font-size: 12.5px;
+  color: var(--texto-3);
+}
+
+.form__dica {
+  margin: -4px 0 0;
+  font-size: 12.5px;
+  color: var(--texto-3);
+}
+
+/* ---------- Check-in e tarefas atrasadas ---------- */
+
+.checkin {
+  margin: 16px 0 4px;
+}
+
+.mover {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--texto-3);
+}
+
+.mover__botao {
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--corpo-alto);
+  color: var(--texto-2);
+  font-size: 12.5px;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 2px 0 #121417,
+    0 3px 6px rgba(0, 0, 0, 0.4);
+}
+
+.mover__botao:hover {
+  color: var(--texto);
+}
+
+.mover__botao:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 0 #121417;
+}
+
+.checkins {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: 9px;
+  background: var(--corpo-baixo);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+  font-size: 12.5px;
+  color: var(--texto-2);
+}
+
+.checkins li + li {
+  margin-top: 4px;
+}
+
+.checkins strong {
+  color: var(--texto);
+  font-weight: 500;
+}
+
 /* ---------- Ajustes ---------- */
 
 .ajustes {
@@ -1141,7 +1511,8 @@ h2 {
   margin-bottom: 6px;
 }
 
-.modal > p {
+.modal > p,
+.modal__texto {
   margin: 0 0 16px;
   color: var(--texto-2);
 }

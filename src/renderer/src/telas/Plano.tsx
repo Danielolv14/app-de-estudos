@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Estado, Tarefa } from '@shared/tipos'
 import { diaMes, diaMesExtenso, formatarDuracao, inicioDaSemana, metaDoDia, nomeDiaSemana, somarDias } from '@shared/regras'
 import { estiloMateria, nomeDe } from '../componentes/Basicos'
+import { estaAtrasada, MoverAtrasada } from '../componentes/Atrasada'
 import { FormTarefa } from '../componentes/Formularios'
 import { IconeEditar, IconeMais } from '../componentes/Icones'
 
@@ -56,8 +57,12 @@ export function Plano({ estado }: { estado: Estado }) {
         {comData ? `, ${nomeDiaSemana(t.data, true)} ${diaMes(t.data)}` : ''}
         {t.detalhe ? `. ${t.detalhe}` : ''}
       </span>
+      {estaAtrasada(t, hoje) && <MoverAtrasada tarefa={t} tarefas={tarefas} hoje={hoje} />}
     </li>
   )
+
+  const checkinsDoDia = (data: string) =>
+    estado.sessoes.filter((s) => s.dia === data && s.fim !== null && (s.checkinFeito || s.checkinTravou))
 
   return (
     <div>
@@ -136,6 +141,24 @@ export function Plano({ estado }: { estado: Estado }) {
                       </div>
                     )}
                     <ul className="tarefas">{lista.map((t) => linhaTarefa(t))}</ul>
+                    {checkinsDoDia(data).length > 0 && (
+                      <ul className="checkins" aria-label="Check-ins das sessões do dia">
+                        {checkinsDoDia(data).map((s) => (
+                          <li key={s.id}>
+                            {s.checkinFeito && (
+                              <>
+                                <strong>Feito:</strong> {s.checkinFeito}{' '}
+                              </>
+                            )}
+                            {s.checkinTravou && (
+                              <>
+                                <strong>Travou em:</strong> {s.checkinTravou}
+                              </>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
               )

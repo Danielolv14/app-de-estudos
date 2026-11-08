@@ -79,6 +79,13 @@ describe('sessão de estudo', () => {
     expect(sessao.situacaoTrava().livre).toBe(true)
   })
 
+  it('guarda o check-in do fim da sessão, numa linha só', () => {
+    sessao.iniciar(tarefaDeHoje().id)
+    agora += 121 * MIN
+    sessao.encerrar({ marcarFeita: true, feito: '  3.4 e 3.5,\n exercícios 1 a 27 ', travou: 'implícita com produto' })
+    expect(repo.sessoes()[0]).toMatchObject({ checkinFeito: '3.4 e 3.5, exercícios 1 a 27', checkinTravou: 'implícita com produto' })
+  })
+
   it('dia sem tarefa (folga) não tem trava', () => {
     agora = new Date(2026, 10, 9, 15, 0).getTime() // segunda
     sessao.iniciar(null)

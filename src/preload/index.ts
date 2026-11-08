@@ -32,6 +32,7 @@ const api: Api = {
   encerrar: chamar('sessao:encerrar') as Api['encerrar'],
   salvarTarefa: chamar('tarefa:salvar') as Api['salvarTarefa'],
   marcarTarefa: chamar('tarefa:marcar') as Api['marcarTarefa'],
+  moverTarefa: chamar('tarefa:mover') as Api['moverTarefa'],
   removerTarefa: chamar('tarefa:remover') as Api['removerTarefa'],
   salvarEvento: chamar('evento:salvar') as Api['salvarEvento'],
   removerEvento: chamar('evento:remover') as Api['removerEvento'],

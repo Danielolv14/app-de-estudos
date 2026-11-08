@@ -103,23 +103,35 @@ const TIPOS: { valor: TipoEvento; nome: string }[] = [
   { valor: 'outro', nome: 'Outro' }
 ]
 
-export function FormEvento(p: { materias: Materia[]; evento?: Evento; dataInicial: string; aoFechar: () => void }) {
+export function FormEvento(p: {
+  materias: Materia[]
+  evento?: Evento
+  dataInicial: string
+  materiaInicial?: number | null
+  tipoInicial?: TipoEvento
+  aoFechar: () => void
+}) {
   const ev = p.evento
+  const texto = (n: number | null | undefined) => (n === null || n === undefined ? '' : String(n).replace('.', ','))
   const [data, setData] = useState(ev?.data ?? p.dataInicial)
+  const [semData, setSemData] = useState(ev ? ev.data === null : false)
   const [titulo, setTitulo] = useState(ev?.titulo ?? '')
-  const [tipo, setTipo] = useState<TipoEvento>(ev?.tipo ?? 'prova')
-  const [materiaId, setMateriaId] = useState<number | null>(ev ? ev.materiaId : (p.materias[0]?.id ?? null))
-  const [pontos, setPontos] = useState(ev?.pontos?.toString() ?? '')
-  const [meta, setMeta] = useState(ev?.meta?.toString() ?? '')
-  const [nota, setNota] = useState(ev?.nota?.toString() ?? '')
+  const [tipo, setTipo] = useState<TipoEvento>(ev?.tipo ?? p.tipoInicial ?? 'prova')
+  const [materiaId, setMateriaId] = useState<number | null>(
+    ev ? ev.materiaId : p.materiaInicial !== undefined ? p.materiaInicial : (p.materias[0]?.id ?? null)
+  )
+  const [pontos, setPontos] = useState(texto(ev?.pontos))
+  const [meta, setMeta] = useState(texto(ev?.meta))
+  const [nota, setNota] = useState(texto(ev?.nota))
   const avaliacao = tipo === 'prova' || tipo === 'atividade' || tipo === 'reavaliacao'
-  const valido = titulo.trim() !== '' && /^\d{4}-\d{2}-\d{2}$/.test(data)
+  const comData = !(avaliacao && semData)
+  const valido = titulo.trim() !== '' && (!comData || /^\d{4}-\d{2}-\d{2}$/.test(data))
 
   async function salvar() {
     if (!valido) return
     await window.api.salvarEvento({
       id: ev?.id,
-      data,
+      data: comData ? data : null,
       titulo: titulo.trim(),
       tipo,
       materiaId,
@@ -152,7 +164,7 @@ export function FormEvento(p: { materias: Materia[]; evento?: Evento; dataInicia
         <div className="form__linha">
           <label>
             Dia
-            <input className="campo" type="date" value={data} onChange={(e) => setData(e.target.value)} />
+            <input className="campo" type="date" value={comData ? data : ''} disabled={!comData} onChange={(e) => setData(e.target.value)} />
           </label>
           <label>
             Tipo
@@ -177,6 +189,12 @@ export function FormEvento(p: { materias: Materia[]; evento?: Evento; dataInicia
           </select>
         </label>
         {avaliacao && (
+          <label className="opcao">
+            <input type="checkbox" className="marcar" checked={semData} onChange={(e) => setSemData(e.target.checked)} />
+            A data ainda não saiu
+          </label>
+        )}
+        {avaliacao && (
           <div className="form__linha" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
             <label>
               Vale (pontos)
@@ -184,13 +202,19 @@ export function FormEvento(p: { materias: Materia[]; evento?: Evento; dataInicia
             </label>
             <label>
               Sua meta
-              <input className="campo" inputMode="decimal" value={meta} onChange={(e) => setMeta(e.target.value)} />
+              <input className="campo" inputMode="decimal" value={meta} onChange={(e) => setMeta(e.target.value)} placeholder="O app calcula" />
             </label>
             <label>
               Nota que tirou
               <input className="campo" inputMode="decimal" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Depois da prova" />
             </label>
           </div>
+        )}
+        {avaliacao && (
+          <p className="form__dica">
+            Deixe a meta vazia para o app calcular quanto você precisa tirar para chegar a 60. A reavaliação entra no lugar da menor nota
+            de prova.
+          </p>
         )}
         <div className="form__botoes">
           {ev && (
