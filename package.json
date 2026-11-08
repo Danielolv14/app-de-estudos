@@ -16,10 +16,11 @@
     "instalador": "electron-vite build && electron-builder --win"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "sql.js": "^1.13.0"
   },
   "devDependencies": {
-    "@fontsource/ibm-plex-sans": "^5.2.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

@@ -4,6 +4,7 @@ import type { Estado, Evento, Materia } from '@shared/tipos'
 import { diaMes } from '@shared/regras'
 import { formatarNota, NOTA_MINIMA, notasDaMateria, type NotasDaMateria } from '@shared/notas'
 import { estiloMateria, Led } from '../componentes/Basicos'
+import { Brilho } from '../componentes/Decoracao'
 import { FormEvento } from '../componentes/Formularios'
 import { IconeMais } from '../componentes/Icones'
 
@@ -129,6 +130,7 @@ function Mostrador({ n }: { n: NotasDaMateria }) {
   return (
     <div className={`mostrador ${pct !== null && pct > 75 ? 'mostrador--alto' : ''}`} aria-label={pct !== null ? `${pct}% de cada avaliação que falta` : 'Não dá mais para chegar a 60'}>
       <div className="mostrador__visor">
+        <Brilho />
         <span className="mostrador__digitos" aria-hidden>
           <span className="mostrador__fantasma">888</span>
           <span className="mostrador__aceso">{pct !== null ? String(pct).padStart(3, '!') : '!--'}</span>

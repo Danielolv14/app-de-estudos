@@ -101,7 +101,7 @@ export function Plano({ estado }: { estado: Estado }) {
                 <div className={`dia ${data === hoje ? 'dia--hoje' : ''}`} key={data}>
                   <div>
                     <div className="dia__nome">
-                      {nomeDiaSemana(data, true)} {diaMes(data)}
+                      {nomeDiaSemana(data, true)} <span className="titulo-apagado">{diaMes(data)}</span>
                     </div>
                     <div className="dia__meta">
                       {metaEditando?.data === data ? (

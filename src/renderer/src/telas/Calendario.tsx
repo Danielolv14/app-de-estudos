@@ -53,7 +53,7 @@ export function Calendario({ estado }: { estado: Estado }) {
               <IconeSeta tamanho={16} />
             </button>
             <h2>
-              {MESES[mes.getMonth()]} de {mes.getFullYear()}
+              {MESES[mes.getMonth()]} <span className="titulo-apagado">de {mes.getFullYear()}</span>
             </h2>
           </div>
           <div className="grade">

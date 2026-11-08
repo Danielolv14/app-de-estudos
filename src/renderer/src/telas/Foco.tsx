@@ -11,6 +11,7 @@ import {
   pausaMs
 } from '@shared/regras'
 import { Digitos, Led, estiloMateria, nomeDe } from '../componentes/Basicos'
+import { Brilho, FundoGrade } from '../componentes/Decoracao'
 import { Encerrar } from '../componentes/Encerrar'
 import { MoverAtrasada } from '../componentes/Atrasada'
 import { IconeParar, IconePausa, IconeTocar } from '../componentes/Icones'
@@ -84,6 +85,7 @@ export function Foco({ estado, abrirTrava }: { estado: Estado; abrirTrava: numbe
     <div className="foco">
       <section>
         <div className="aparelho" style={estiloMateria(materias, materiaId)}>
+          <FundoGrade />
           <div className="aparelho__topo">
             {tarefa || ativa ? (
               <>
@@ -99,6 +101,7 @@ export function Foco({ estado, abrirTrava }: { estado: Estado; abrirTrava: numbe
           </div>
 
           <div className="visor">
+            <Brilho />
             <div className="visor__legenda">
               <span className={ativa?.status === 'estudando' ? 'ligado' : ''}>
                 <Led aceso={ativa?.status === 'estudando'} /> Estudando
@@ -168,7 +171,7 @@ export function Foco({ estado, abrirTrava }: { estado: Estado; abrirTrava: numbe
       <aside>
         <div className="painel">
           <h2>
-            Hoje, {nomeDiaSemana(hoje)} {diaMes(hoje)}
+            Hoje, <span className="titulo-apagado">{nomeDiaSemana(hoje)} {diaMes(hoje)}</span>
           </h2>
           {deHoje.length > 0 ? (
             listaTarefas(deHoje)

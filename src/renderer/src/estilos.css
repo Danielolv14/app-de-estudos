@@ -1,27 +1,53 @@
-/* App de Estudos — "aparelho de bancada".
-   Um único elemento chama a atenção: o visor de 7 segmentos âmbar, rebaixado no painel de grafite.
-   O resto é quieto: superfícies foscas, luz vindo de cima, LEDs só para estados reais. */
+/* App de Estudos: base escura e neutra, uma cor de destaque.
+   A profundidade vem do tom das superfícies e de bordas finas, não de sombra.
+   O destaque (âmbar) aparece só no que importa: botão principal, estado ativo, contagens e um brilho sutil.
+   Trocar a paleta = trocar só o bloco "Paleta" abaixo. */
 
 :root {
-  --fundo: #17191d;
-  --fundo-claro: #1f2227;
-  --corpo: #24282e;
-  --corpo-alto: #2c3037;
-  --corpo-baixo: #1c1f24;
-  --poco: #0d0e10;
-  --linha: rgba(255, 255, 255, 0.06);
-  --linha-forte: rgba(255, 255, 255, 0.1);
-  --sombra-linha: rgba(0, 0, 0, 0.55);
-  --texto: #e8e3d7;
-  --texto-2: #a3a7ae;
-  --texto-3: #6f747c;
-  --ambar: #ffb13d;
-  --ambar-escuro: #c97d12;
-  --ambar-fantasma: rgba(255, 177, 61, 0.07);
-  --verde: #6ee59a;
-  --vermelho: #ff6a57;
-  --raio: 12px;
-  --fonte: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  /* ---- Paleta ---- */
+  --fundo: #0b0c0e;
+  --superficie-1: #111215;
+  --superficie-2: #16171b;
+  --superficie-3: #1c1e22;
+  --borda: rgba(255, 255, 255, 0.08);
+  --borda-forte: rgba(255, 255, 255, 0.14);
+  --borda-hover: rgba(255, 255, 255, 0.24);
+  --texto: #ededef;
+  --texto-2: #a0a1a8;
+  --texto-3: #86878f;
+  --destaque: #ffb23f;
+  --destaque-rgb: 255, 178, 63;
+  --sobre-destaque: #0b0c0e;
+  /* Cores com significado (feito, erro, bloqueio). Não são enfeite. */
+  --sucesso: #5fd38d;
+  --sucesso-rgb: 95, 211, 141;
+  --erro: #f2665a;
+  --erro-rgb: 242, 102, 90;
+
+  /* ---- Derivados ---- */
+  --destaque-suave: rgba(var(--destaque-rgb), 0.1);
+  --destaque-borda: rgba(var(--destaque-rgb), 0.45);
+  --destaque-brilho: rgba(var(--destaque-rgb), 0.16);
+  --anel-foco: 0 0 0 3px rgba(var(--destaque-rgb), 0.22);
+  --brilho-hover: 0 0 18px rgba(var(--destaque-rgb), 0.1);
+  /* Só para o que flutua por cima de tudo (janelas, avisos, mini-timer). */
+  --sombra-flutuante: 0 24px 60px -12px rgba(0, 0, 0, 0.7);
+  --veu: rgba(5, 5, 6, 0.66);
+
+  /* ---- Forma, tipo e movimento ---- */
+  --raio-p: 6px;
+  --raio-m: 8px;
+  --raio-g: 12px;
+  --fonte: 'Geist Variable', 'Segoe UI', sans-serif;
+  --fonte-mono: 'Geist Mono Variable', Consolas, monospace;
+  --rapido: 150ms;
+  --medio: 200ms;
+  --curva: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --grade-passo: 32px;
+
+  /* ---- Apelido antigo ainda usado num style inline (Encerrar.tsx) ---- */
+  --vermelho: var(--erro);
+
   color-scheme: dark;
 }
 
@@ -41,12 +67,29 @@ body {
   font-size: 14px;
   line-height: 1.5;
   color: var(--texto);
-  background:
-    radial-gradient(1200px 520px at 50% -120px, #262a31 0%, transparent 70%),
-    var(--fundo);
+  background: var(--fundo);
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;
   overflow: hidden;
+}
+
+::selection {
+  background: rgba(var(--destaque-rgb), 0.28);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 10px;
+  background: var(--superficie-3) padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--borda-hover) padding-box;
 }
 
 button,
@@ -58,9 +101,8 @@ textarea {
 }
 
 :focus-visible {
-  outline: 2px solid var(--ambar);
-  outline-offset: 2px;
-  border-radius: 6px;
+  outline: 0;
+  box-shadow: var(--anel-foco);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -86,88 +128,100 @@ textarea {
   gap: 18px;
   padding: 0 150px 0 18px;
   -webkit-app-region: drag;
-  border-bottom: 1px solid var(--sombra-linha);
-  box-shadow: 0 1px 0 var(--linha);
+  border-bottom: 1px solid var(--borda);
   background: var(--fundo);
 }
 
 .barra-titulo__nome {
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--texto-2);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--texto);
   white-space: nowrap;
 }
 
+/* Quando não cabem todas, a última some num degradê em vez de ser cortada seco. */
 .provas {
   display: flex;
   gap: 8px;
   min-width: 0;
   overflow: hidden;
+  mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
 }
 
 .prova-chip {
   -webkit-app-region: no-drag;
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 26px;
-  padding: 0 11px 0 9px;
-  border-radius: 7px;
-  background: var(--corpo-baixo);
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.6),
-    0 1px 0 var(--linha);
+  gap: 7px;
+  height: 24px;
+  padding: 0 9px 0 8px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-p);
+  background: var(--superficie-1);
   white-space: nowrap;
-  font-size: 12.5px;
-  color: var(--texto-2);
+  font-size: 12px;
+  color: var(--texto-3);
+}
+
+.prova-chip .ponto {
+  width: 6px;
+  height: 6px;
 }
 
 .prova-chip__dias {
   color: var(--texto);
-  font-weight: 600;
+  font-weight: 500;
+}
+
+.prova-chip--perto {
+  border-color: var(--destaque-borda);
 }
 
 .prova-chip--perto .prova-chip__dias {
-  color: var(--ambar);
+  color: var(--destaque);
 }
 
 .lateral {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 18px 12px;
-  border-right: 1px solid var(--sombra-linha);
-  box-shadow: 1px 0 0 var(--linha);
+  gap: 2px;
+  padding: 16px 12px;
+  border-right: 1px solid var(--borda);
 }
 
 .nav {
   display: flex;
   align-items: center;
   gap: 11px;
-  height: 40px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 9px;
+  height: 36px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: var(--raio-m);
   background: transparent;
   color: var(--texto-2);
   cursor: pointer;
   text-align: left;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background var(--rapido) var(--curva),
+    border-color var(--rapido) var(--curva),
+    color var(--rapido) var(--curva);
 }
 
 .nav:hover {
   color: var(--texto);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--superficie-1);
 }
 
-/* A tela atual fica "afundada", como um seletor pressionado. */
+/* A tela atual: superfície mais clara, borda fina e o ícone na cor de destaque. */
 .nav--ativa,
 .nav--ativa:hover {
   color: var(--texto);
-  background: var(--corpo-baixo);
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.55),
-    0 1px 0 var(--linha);
+  background: var(--superficie-2);
+  border-color: var(--borda);
+}
+
+.nav--ativa svg {
+  color: var(--destaque);
 }
 
 .nav svg {
@@ -177,13 +231,16 @@ textarea {
 .lateral__rodape {
   margin-top: auto;
   padding: 12px;
-  border-radius: 10px;
-  background: var(--corpo-baixo);
-  box-shadow:
-    inset 0 1px 3px rgba(0, 0, 0, 0.5),
-    0 1px 0 var(--linha);
+  border: 1px solid var(--borda) !important;
+  border-radius: var(--raio-g);
+  background: var(--superficie-1);
   font-size: 12.5px;
-  color: var(--texto-2);
+  color: var(--texto-3);
+  transition: border-color var(--rapido) var(--curva);
+}
+
+.lateral__rodape:hover {
+  border-color: var(--borda-forte) !important;
 }
 
 .lateral__rodape strong {
@@ -199,171 +256,215 @@ textarea {
   position: relative;
   min-width: 0;
   overflow-y: auto;
-  padding: 28px 36px 48px;
+  padding: 34px 40px 56px;
 }
 
 .titulo-tela {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
-  margin: 0 0 22px;
+  gap: 24px;
+  margin: 0 0 30px;
 }
 
+/* Título grande, peso normal, tracking negativo; o texto de apoio vem logo abaixo, apagado. */
 .titulo-tela h1 {
   margin: 0;
-  font-size: 24px;
-  line-height: 1.2;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: 400;
+  letter-spacing: -0.035em;
 }
 
 .titulo-tela p {
-  margin: 4px 0 0;
-  color: var(--texto-2);
+  margin: 8px 0 0;
+  max-width: 64ch;
+  color: var(--texto-3);
 }
 
 h2 {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   margin: 0 0 10px;
+}
+
+/* Segunda parte de um título em duas partes: mesma frase, só que apagada. */
+.titulo-apagado {
+  color: var(--texto-3);
 }
 
 .mudo {
   color: var(--texto-3);
 }
 
-/* ---------- LEDs ---------- */
+/* ---------- Decoração (componentes FundoGrade e Brilho) ---------- */
+
+.fundo-grade,
+.brilho {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.fundo-grade {
+  inset: 0;
+  background-image:
+    linear-gradient(var(--borda) 1px, transparent 1px),
+    linear-gradient(90deg, var(--borda) 1px, transparent 1px);
+  background-size: var(--grade-passo) var(--grade-passo);
+  background-position: -1px -1px;
+  opacity: 0.55;
+  mask-image: radial-gradient(ellipse 75% 70% at 50% 35%, #000 25%, transparent 100%);
+}
+
+.brilho {
+  left: 50%;
+  top: 50%;
+  width: 70%;
+  height: 90%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(closest-side, var(--destaque-brilho), transparent);
+  filter: blur(12px);
+}
+
+/* ---------- Pills e LEDs de estado ---------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-p);
+  background: var(--superficie-1);
+  font-size: 12px;
+  color: var(--texto-3);
+  white-space: nowrap;
+}
 
 .led {
-  --cor-led: var(--verde);
+  --cor-led: var(--sucesso);
   flex: none;
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: #2a2d33;
-  box-shadow:
-    inset 0 1px 1px rgba(0, 0, 0, 0.7),
-    0 1px 0 var(--linha);
+  background: var(--texto-3);
+  opacity: 0.45;
 }
 
 .led--aceso {
-  background: radial-gradient(circle at 35% 30%, #fff 0 12%, var(--cor-led) 45%);
-  box-shadow:
-    0 0 6px var(--cor-led),
-    0 0 14px color-mix(in srgb, var(--cor-led) 55%, transparent);
+  opacity: 1;
+  background: var(--cor-led);
+  box-shadow: 0 0 8px var(--cor-led);
 }
 
 .led--ambar {
-  --cor-led: var(--ambar);
+  --cor-led: var(--destaque);
 }
 
 .led--vermelho {
-  --cor-led: var(--vermelho);
+  --cor-led: var(--erro);
 }
 
-/* ---------- Teclas (botões físicos) ---------- */
+/* ---------- Botões ---------- */
 
+/* Secundário: transparente, borda fina. No hover a borda clareia e surge um brilho discreto. */
 .tecla {
-  --tampa-1: #3b4048;
-  --tampa-2: #2d3138;
-  --base: #121417;
-  --texto-tecla: var(--texto);
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  height: 40px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 10px;
-  background: linear-gradient(180deg, var(--tampa-1), var(--tampa-2));
-  color: var(--texto-tecla);
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-m);
+  background: transparent;
+  color: var(--texto);
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
-    0 4px 0 var(--base),
-    0 6px 14px rgba(0, 0, 0, 0.55);
-  transform: translateY(0);
   transition:
-    transform 0.06s,
-    box-shadow 0.06s,
-    filter 0.15s;
+    border-color var(--rapido) var(--curva),
+    background var(--rapido) var(--curva),
+    box-shadow var(--medio) var(--curva),
+    filter var(--rapido) var(--curva);
   user-select: none;
 }
 
-.tecla:hover {
-  filter: brightness(1.07);
+.tecla:hover:not(:disabled) {
+  border-color: var(--borda-hover);
+  background: var(--superficie-1);
+  box-shadow: var(--brilho-hover);
 }
 
 .tecla:active:not(:disabled) {
-  transform: translateY(3px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
-    0 1px 0 var(--base),
-    0 2px 5px rgba(0, 0, 0, 0.5);
+  background: var(--superficie-2);
+}
+
+.tecla:focus-visible {
+  box-shadow: var(--anel-foco);
 }
 
 .tecla:disabled {
   cursor: default;
-  filter: saturate(0.4) brightness(0.75);
+  opacity: 0.45;
 }
 
 .tecla--grande {
-  height: 54px;
-  padding: 0 28px;
-  border-radius: 13px;
-  font-size: 16px;
+  height: 44px;
+  padding: 0 20px;
+  font-size: 15px;
 }
 
+/* Primário: preenchido com a cor de destaque. */
 .tecla--ambar {
-  --tampa-1: #ffc871;
-  --tampa-2: #f0a128;
-  --base: #7d4a06;
-  --texto-tecla: #2b1900;
-  font-weight: 600;
+  border-color: transparent;
+  background: var(--destaque);
+  color: var(--sobre-destaque);
+}
+
+.tecla--ambar:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--destaque);
+  filter: brightness(1.06);
+  box-shadow: 0 0 24px rgba(var(--destaque-rgb), 0.3);
+}
+
+.tecla--ambar:active:not(:disabled) {
+  background: var(--destaque);
+  filter: brightness(0.96);
 }
 
 .tecla--pequena {
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 8px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: var(--raio-p);
   font-size: 13px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 3px 0 var(--base),
-    0 4px 9px rgba(0, 0, 0, 0.5);
-}
-
-.tecla--pequena:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 1px 0 var(--base),
-    0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .tecla--icone {
-  width: 32px;
+  width: 30px;
   padding: 0;
 }
 
 .botao-texto {
   border: 0;
   background: none;
-  color: var(--texto-2);
+  color: var(--texto-3);
   padding: 4px 6px;
-  border-radius: 6px;
+  border-radius: var(--raio-p);
   cursor: pointer;
+  transition:
+    color var(--rapido) var(--curva),
+    background var(--rapido) var(--curva);
 }
 
 .botao-texto:hover {
   color: var(--texto);
+  background: var(--superficie-2);
 }
 
 /* ---------- O aparelho (tela Foco) ---------- */
@@ -375,19 +476,19 @@ h2 {
   align-items: start;
 }
 
+/* Card principal: superfície, borda fina e a grade de linhas por trás (componente FundoGrade). */
 .aparelho {
   position: relative;
-  padding: 26px 28px 30px;
-  border-radius: 24px;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, #2c3037 0%, #24282e 55%, #212429 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(0, 0, 0, 0.65),
-    0 14px 28px -8px rgba(0, 0, 0, 0.6),
-    0 40px 70px -30px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  padding: 24px 28px 28px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-g);
+  background: var(--superficie-1);
+}
+
+.aparelho > :not(.fundo-grade) {
+  position: relative;
+  z-index: 1;
 }
 
 .aparelho__topo {
@@ -401,8 +502,8 @@ h2 {
 .aparelho__materia {
   display: flex;
   align-items: center;
-  gap: 9px;
-  font-weight: 600;
+  gap: 8px;
+  font-weight: 500;
 }
 
 .aparelho__tarefa {
@@ -413,75 +514,96 @@ h2 {
   color: var(--texto-2);
 }
 
+/* Visor: fundo um pouco mais escuro e translúcido, para a grade aparecer de leve; brilho atrás do número. */
 .visor {
   position: relative;
   container-type: inline-size;
-  padding: 22px 26px 20px;
-  border-radius: 14px;
-  background: radial-gradient(120% 140% at 50% 0%, #121316 0%, var(--poco) 60%);
-  box-shadow:
-    inset 0 3px 8px rgba(0, 0, 0, 0.95),
-    inset 0 0 0 1px rgba(0, 0, 0, 0.9),
-    0 1px 0 rgba(255, 255, 255, 0.07);
   overflow: hidden;
+  padding: 16px 20px 20px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-g);
+  background: color-mix(in srgb, var(--fundo) 72%, transparent);
 }
 
-/* Reflexo do vidro por cima do visor. */
-.visor::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(168deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0) 38%);
-  pointer-events: none;
+.visor > :not(.brilho) {
+  position: relative;
+  z-index: 1;
 }
 
+.visor .brilho {
+  top: 52%;
+  width: 78%;
+  height: 80%;
+  transition: opacity var(--medio) var(--curva);
+}
+
+.visor:has(.digitos--parado) .brilho {
+  opacity: 0;
+}
+
+.visor:has(.digitos--pausado) .brilho {
+  opacity: 0.45;
+}
+
+/* Legenda em pills: o estado ligado ganha texto claro e borda mais forte. */
 .visor__legenda {
   display: flex;
-  gap: 18px;
+  flex-wrap: wrap;
+  gap: 6px;
   justify-content: flex-end;
   font-size: 12px;
   color: var(--texto-3);
 }
 
 .visor__legenda span {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 7px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-p);
+  background: var(--superficie-1);
+  transition:
+    color var(--rapido) var(--curva),
+    border-color var(--rapido) var(--curva);
 }
 
 .visor__legenda .ligado {
-  color: var(--texto-2);
+  color: var(--texto);
+  border-color: var(--borda-forte);
 }
 
+/* O número do timer: mono fina, tracking negativo. Parado fica apagado; contando, fica na cor de destaque. */
 .digitos {
   position: relative;
-  margin: 10px 0 14px;
-  font-family: 'Segmentos', monospace;
-  /* "88:88:88" ocupa ~5,4 em: o tamanho acompanha a largura do visor para nunca cortar. */
-  font-size: min(17.5cqw, 132px);
+  margin: 18px 0 20px;
+  font-family: var(--fonte-mono);
+  font-weight: 300;
+  /* "88:88:88" ocupa ~4,5 em: o tamanho acompanha a largura do visor para nunca cortar. */
+  font-size: min(19cqw, 140px);
   line-height: 1;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.045em;
   text-align: center;
-  font-variant-numeric: normal;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Os segmentos apagados ficam visíveis por baixo, como num visor de verdade. */
+/* A camada de "8" só reserva a largura; fica invisível. */
 .digitos__fantasma {
-  color: var(--ambar-fantasma);
+  color: transparent;
 }
 
 .digitos__aceso {
   position: absolute;
   inset: 0;
-  color: var(--ambar);
-  text-shadow:
-    0 0 6px rgba(255, 168, 46, 0.6),
-    0 0 26px rgba(255, 140, 20, 0.28);
+  color: var(--destaque);
+  text-shadow: 0 0 40px rgba(var(--destaque-rgb), 0.22);
+  transition: color var(--medio) var(--curva);
 }
 
 .digitos--parado .digitos__aceso {
-  color: rgba(255, 177, 61, 0.5);
-  text-shadow: 0 0 10px rgba(255, 140, 20, 0.12);
+  color: var(--texto-3);
+  text-shadow: none;
 }
 
 .digitos--pausado .digitos__aceso {
@@ -494,61 +616,68 @@ h2 {
   }
 }
 
+/* Barra da meta do dia: 30 traços finos. */
 .barra-meta {
   display: grid;
   grid-template-columns: repeat(30, 1fr);
-  gap: 4px;
-  height: 14px;
+  gap: 3px;
+  height: 4px;
 }
 
 .barra-meta i {
-  border-radius: 2px;
-  background: var(--ambar-fantasma);
+  border-radius: 1px;
+  background: var(--borda-forte);
+  transition: background var(--medio) var(--curva);
 }
 
 .barra-meta i.aceso {
-  background: var(--ambar);
-  box-shadow: 0 0 6px rgba(255, 168, 46, 0.55);
+  background: var(--destaque);
 }
 
 .barra-meta--batida i.aceso {
-  background: var(--verde);
-  box-shadow: 0 0 6px rgba(110, 229, 154, 0.55);
+  background: var(--sucesso);
 }
 
 .visor__rodape {
   display: flex;
   justify-content: space-between;
-  margin-top: 10px;
+  gap: 16px;
+  margin-top: 12px;
   font-size: 13px;
   color: var(--texto-2);
 }
 
 .aparelho__teclas {
   display: flex;
-  gap: 14px;
-  margin-top: 26px;
+  gap: 10px;
+  margin-top: 22px;
 }
 
 .aparelho__info {
-  margin: 18px 2px 0;
+  margin: 16px 0 0;
   color: var(--texto-3);
   font-size: 13px;
 }
 
 /* ---------- Listas de tarefas ---------- */
 
+/* Card: só tom de superfície e borda fina. */
 .painel {
-  padding: 18px;
-  border-radius: 16px;
-  background: var(--fundo-claro);
-  box-shadow:
-    inset 0 1px 0 var(--linha),
-    0 0 0 1px rgba(0, 0, 0, 0.45);
+  padding: 20px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-g);
+  background: var(--superficie-1);
+}
+
+.painel > h2 {
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  margin-bottom: 12px;
 }
 
 .painel + .painel {
-  margin-top: 16px;
+  margin-top: 14px;
 }
 
 .tarefas {
@@ -557,14 +686,19 @@ h2 {
   padding: 0;
 }
 
+/* Linha de tarefa: a cor da matéria aparece só no traço fino à esquerda. */
 .tarefa {
   position: relative;
   display: grid;
   grid-template-columns: 22px 1fr auto;
   gap: 4px 12px;
   align-items: start;
-  padding: 11px 10px 11px 14px;
-  border-radius: 10px;
+  padding: 10px 10px 10px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--raio-m);
+  transition:
+    background var(--rapido) var(--curva),
+    border-color var(--rapido) var(--curva);
 }
 
 .tarefa::before {
@@ -573,13 +707,13 @@ h2 {
   left: 0;
   top: 12px;
   bottom: 12px;
-  width: 3px;
+  width: 2px;
   border-radius: 2px;
   background: var(--cor-materia, var(--texto-3));
 }
 
 .tarefa + .tarefa {
-  box-shadow: 0 -1px 0 var(--linha);
+  margin-top: 2px;
 }
 
 .tarefa--selecionavel {
@@ -587,20 +721,13 @@ h2 {
 }
 
 .tarefa--selecionavel:hover {
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--superficie-2);
 }
 
 .tarefa--escolhida,
 .tarefa--escolhida:hover {
-  background: var(--corpo-baixo);
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.5),
-    0 1px 0 var(--linha);
-}
-
-.tarefa + .tarefa--escolhida,
-.tarefa--escolhida + .tarefa {
-  box-shadow: none;
+  background: var(--superficie-2);
+  border-color: var(--borda-forte);
 }
 
 .tarefa__titulo {
@@ -610,7 +737,7 @@ h2 {
 .tarefa--feita .tarefa__titulo {
   color: var(--texto-3);
   text-decoration: line-through;
-  text-decoration-color: rgba(255, 255, 255, 0.25);
+  text-decoration-color: var(--borda-hover);
 }
 
 .tarefa__detalhe {
@@ -632,7 +759,7 @@ h2 {
   display: flex;
   gap: 2px;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity var(--rapido) var(--curva);
 }
 
 .tarefa:hover .tarefa__acoes,
@@ -640,70 +767,76 @@ h2 {
   opacity: 1;
 }
 
-/* Caixa de marcar com cara de chave pequena. */
+/* Caixa de marcar: superfície com borda fina; marcada, ganha a cor de destaque. */
 .marcar {
   appearance: none;
-  width: 20px;
-  height: 20px;
-  margin: 1px 0 0;
-  border-radius: 6px;
-  background: var(--poco);
-  box-shadow:
-    inset 0 2px 3px rgba(0, 0, 0, 0.8),
-    0 1px 0 var(--linha-forte);
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  border: 1px solid var(--borda-hover);
+  border-radius: 5px;
+  background: var(--superficie-2);
   cursor: pointer;
   display: grid;
   place-items: center;
+  transition:
+    background var(--rapido) var(--curva),
+    border-color var(--rapido) var(--curva),
+    box-shadow var(--rapido) var(--curva);
+}
+
+.marcar:hover {
+  border-color: var(--texto-3);
 }
 
 .marcar:checked {
-  background: linear-gradient(180deg, #7cf0a8, #3fbf72);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    0 0 8px rgba(110, 229, 154, 0.35);
+  border-color: transparent;
+  background: var(--destaque);
+  box-shadow: 0 0 10px rgba(var(--destaque-rgb), 0.3);
 }
 
 .marcar:checked::after {
   content: '';
-  width: 9px;
-  height: 5px;
-  border-left: 2px solid #0d2a18;
-  border-bottom: 2px solid #0d2a18;
+  width: 8px;
+  height: 4px;
+  border-left: 2px solid var(--sobre-destaque);
+  border-bottom: 2px solid var(--sobre-destaque);
   transform: translateY(-1px) rotate(-45deg);
 }
 
 /* ---------- Plano ---------- */
 
 .semana {
-  margin-bottom: 30px;
+  margin-bottom: 34px;
 }
 
 .semana__titulo {
   display: flex;
   align-items: baseline;
   gap: 12px;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   font-size: 13px;
   color: var(--texto-2);
   font-weight: 500;
 }
 
+/* Cada dia é uma linha separada por borda fina; a coluna da esquerda tem o nome e a meta. */
 .dia {
   display: grid;
   grid-template-columns: 132px 1fr;
   gap: 20px;
   padding: 14px 0;
-  border-top: 1px solid var(--sombra-linha);
-  box-shadow: inset 0 1px 0 var(--linha);
-}
-
-.dia--hoje .dia__nome {
-  color: var(--ambar);
+  border-top: 1px solid var(--borda);
 }
 
 .dia__nome {
-  font-weight: 600;
+  font-weight: 500;
   font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.dia--hoje .dia__nome {
+  color: var(--destaque);
 }
 
 .dia__meta {
@@ -715,11 +848,17 @@ h2 {
 .dia__meta button {
   padding: 0;
   border: 0;
+  border-radius: 2px;
   background: none;
   color: var(--texto-2);
   cursor: pointer;
-  text-decoration: underline dotted rgba(255, 255, 255, 0.25);
+  text-decoration: underline dotted var(--borda-hover);
   text-underline-offset: 3px;
+  transition: color var(--rapido) var(--curva);
+}
+
+.dia__meta button:hover {
+  color: var(--texto);
 }
 
 .dia__eventos {
@@ -729,20 +868,24 @@ h2 {
   margin-bottom: 6px;
 }
 
+/* Selo de evento: pill neutra; a matéria aparece só no ponto. */
 .selo {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 2px 10px 2px 8px;
-  border-radius: 6px;
-  font-size: 12.5px;
-  background: color-mix(in srgb, var(--cor-materia, #888) 14%, transparent);
-  color: var(--texto);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cor-materia, #888) 30%, transparent);
+  height: 24px;
+  padding: 0 9px 0 8px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-p);
+  background: var(--superficie-1);
+  font-size: 12px;
+  color: var(--texto-2);
 }
 
 .selo--prova {
-  font-weight: 600;
+  border-color: var(--borda-forte);
+  color: var(--texto);
+  font-weight: 500;
 }
 
 .ponto {
@@ -753,14 +896,23 @@ h2 {
   flex: none;
 }
 
+/* Campo pequeno para ajustar a meta do dia. */
 .campo-meta {
   width: 64px;
   height: 26px;
   padding: 0 8px;
-  border: 0;
-  border-radius: 6px;
-  background: var(--poco);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-p);
+  background: var(--superficie-2);
+  transition:
+    border-color var(--rapido) var(--curva),
+    box-shadow var(--rapido) var(--curva);
+}
+
+.campo-meta:focus {
+  outline: 0;
+  border-color: var(--destaque-borda);
+  box-shadow: var(--anel-foco);
 }
 
 /* ---------- Calendário ---------- */
@@ -775,48 +927,56 @@ h2 {
 .mes__cabecalho {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .mes__cabecalho h2 {
-  margin: 0;
+  margin: 0 0 0 6px;
   min-width: 160px;
-  font-size: 17px;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
 }
 
+/* Grade do mês: as linhas entre as células são o fundo aparecendo pelo gap de 1px. */
 .grade {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  border-radius: 14px;
-  overflow: hidden;
-  background: var(--sombra-linha);
   gap: 1px;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-g);
+  background: var(--borda);
 }
 
 .grade__semana {
   padding: 8px 10px;
   font-size: 12px;
   color: var(--texto-3);
-  background: var(--fundo);
+  background: var(--superficie-1);
 }
 
 .celula {
   min-height: 96px;
   padding: 7px 8px;
   border: 0;
-  background: var(--fundo-claro);
+  background: var(--superficie-1);
   text-align: left;
   vertical-align: top;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  transition: background var(--rapido) var(--curva);
 }
 
 .celula:hover {
-  background: #23262c;
+  background: var(--superficie-2);
+}
+
+.celula:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--destaque-borda);
 }
 
 .celula--fora {
@@ -829,37 +989,51 @@ h2 {
   color: var(--texto-2);
 }
 
+.celula--fora .celula__num {
+  color: var(--texto-3);
+}
+
+/* Hoje: o número vira um selo na cor de destaque e a célula ganha um contorno fino. */
+.celula--hoje {
+  box-shadow: inset 0 0 0 1px var(--destaque-borda);
+}
+
 .celula--hoje .celula__num {
   align-self: flex-start;
   min-width: 24px;
-  height: 24px;
-  margin: -2px 0 0 -4px;
-  border-radius: 12px;
+  height: 22px;
+  margin: -2px 0 0 -3px;
+  padding: 0 6px;
+  border-radius: var(--raio-p);
   display: grid;
   place-items: center;
-  background: var(--ambar);
-  color: #2b1900;
+  background: var(--destaque);
+  color: var(--sobre-destaque);
   font-weight: 600;
 }
 
+/* Evento: superfície neutra; a cor da matéria fica só no traço da esquerda. */
 .celula__evento {
   display: block;
   width: 100%;
   padding: 2px 6px;
-  border-radius: 5px;
+  border: 0;
+  border-left: 2px solid var(--cor-materia, var(--texto-3));
+  border-radius: 4px;
   font-size: 11.5px;
   line-height: 1.35;
-  background: color-mix(in srgb, var(--cor-materia, #888) 18%, transparent);
-  border-left: 3px solid var(--cor-materia, #888);
+  background: var(--superficie-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border-top: 0;
-  border-right: 0;
-  border-bottom: 0;
   color: var(--texto);
   text-align: left;
   cursor: pointer;
+  transition: background var(--rapido) var(--curva);
+}
+
+.celula__evento:hover {
+  background: var(--borda-forte);
 }
 
 .celula__plano {
@@ -882,34 +1056,37 @@ h2 {
 }
 
 .lista-provas li + li {
-  border-top: 1px solid var(--sombra-linha);
-  box-shadow: inset 0 1px 0 var(--linha);
+  border-top: 1px solid var(--borda);
 }
 
-/* Contador de dias: um pequeno visor, para ligar com o timer. */
+/* Contador de dias: número em mono; só a próxima avaliação ganha a cor de destaque. */
 .contador {
   display: grid;
   place-items: center;
-  height: 46px;
-  border-radius: 9px;
-  background: var(--poco);
-  box-shadow:
-    inset 0 2px 5px rgba(0, 0, 0, 0.9),
-    0 1px 0 var(--linha);
-  font-family: 'SegmentosMini', monospace;
+  height: 48px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  background: var(--superficie-2);
+  font-family: var(--fonte-mono);
   font-size: 19px;
-  color: var(--ambar);
-  text-shadow: 0 0 6px rgba(255, 168, 46, 0.5);
-  font-variant-numeric: normal;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: var(--texto);
+}
+
+.lista-provas li:first-child .contador {
+  border-color: var(--destaque-borda);
+  background: var(--destaque-suave);
+  color: var(--destaque);
 }
 
 .contador small {
   display: block;
-  margin-top: -6px;
   font-family: var(--fonte);
   font-size: 10px;
+  letter-spacing: 0;
   color: var(--texto-3);
-  text-shadow: none;
 }
 
 .lista-provas__titulo {
@@ -928,7 +1105,7 @@ h2 {
 }
 
 .boletim {
-  padding: 20px 22px;
+  padding: 22px 24px;
 }
 
 .boletim__topo {
@@ -941,14 +1118,16 @@ h2 {
 .boletim__nome {
   display: flex;
   align-items: center;
-  gap: 9px;
-  margin: 0 0 4px;
-  font-size: 17px;
+  gap: 10px;
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
 }
 
 .boletim__nome .ponto {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
 }
 
 .boletim__frase {
@@ -957,60 +1136,78 @@ h2 {
   color: var(--texto-2);
 }
 
-/* Visor pequeno com a porcentagem: o mesmo âmbar do timer. */
+/* Mostrador da porcentagem: número em mono na cor de destaque, com brilho por trás.
+   O "!" que completa os 3 dígitos sai em branco pela fonte "Lacuna" (ver fontes.ts). */
 .mostrador {
   flex: none;
   display: grid;
   justify-items: end;
-  gap: 4px;
+  gap: 6px;
 }
 
 .mostrador__visor {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: flex-end;
-  gap: 4px;
-  padding: 9px 12px 8px 14px;
-  border-radius: 10px;
-  background: var(--poco);
-  box-shadow:
-    inset 0 2px 5px rgba(0, 0, 0, 0.9),
-    0 1px 0 var(--linha);
+  gap: 2px;
+  padding: 8px 14px 9px 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  background: var(--superficie-2);
+}
+
+.mostrador__visor > :not(.brilho) {
+  position: relative;
+  z-index: 1;
+}
+
+.mostrador__visor .brilho {
+  width: 90%;
+  height: 120%;
 }
 
 .mostrador__digitos {
   display: grid;
-  font-family: 'SegmentosMini', monospace;
-  font-size: 34px;
+  font-family: 'Lacuna', var(--fonte-mono);
+  font-size: 36px;
+  font-weight: 400;
   line-height: 1;
+  letter-spacing: -0.04em;
 }
 
 .mostrador__digitos > span {
   grid-area: 1 / 1;
+  text-align: right;
 }
 
+/* A camada de "888" só reserva a largura. */
 .mostrador__fantasma {
-  color: rgba(255, 177, 61, 0.06);
+  color: transparent;
 }
 
-.mostrador__aceso {
-  color: var(--ambar);
-  text-shadow: 0 0 9px rgba(255, 168, 46, 0.45);
+.mostrador__aceso,
+.mostrador__pct {
+  color: var(--destaque);
 }
 
 .mostrador__pct {
+  margin-bottom: 3px;
   font-size: 15px;
-  font-weight: 600;
-  color: var(--ambar);
+  font-weight: 500;
 }
 
 .mostrador--alto .mostrador__aceso,
 .mostrador--alto .mostrador__pct {
-  color: var(--vermelho);
-  text-shadow: 0 0 9px rgba(255, 106, 87, 0.45);
+  color: var(--erro);
+}
+
+.mostrador--alto .brilho {
+  background: radial-gradient(closest-side, rgba(var(--erro-rgb), 0.16), transparent);
 }
 
 .mostrador small {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--texto-3);
 }
 
@@ -1018,76 +1215,65 @@ h2 {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 9px 14px;
-  border-radius: 10px;
-  background: var(--corpo-baixo);
-  box-shadow:
-    inset 0 1px 3px rgba(0, 0, 0, 0.5),
-    0 1px 0 var(--linha);
+  height: 36px;
+  padding: 0 14px 0 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  background: var(--superficie-2);
   font-weight: 500;
 }
 
-/* Régua de 0 a 100 com a marca no 60. */
+/* Régua de 0 a 100 com a marca no 60: o que já tem em cinza claro, as metas fixas
+   hachuradas e o que falta na cor de destaque. */
 .regua {
-  margin: 20px 0 4px;
+  margin: 22px 0 4px;
 }
 
 .regua__trilho {
   position: relative;
-  height: 14px;
-  border-radius: 7px;
-  background: var(--poco);
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.85),
-    0 1px 0 var(--linha);
+  height: 8px;
+  border-radius: 3px;
+  background: var(--superficie-3);
 }
 
 .regua__obtido,
 .regua__previsto,
 .regua__falta {
   position: absolute;
-  top: 2px;
-  bottom: 2px;
+  top: 0;
+  bottom: 0;
 }
 
 .regua__obtido {
-  left: 2px;
-  border-radius: 5px 0 0 5px;
-  background: var(--cor-materia, var(--texto-2));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 0 8px color-mix(in srgb, var(--cor-materia, #888) 45%, transparent);
+  left: 0;
+  border-radius: 3px 0 0 3px;
+  background: var(--texto-2);
 }
 
 .regua__previsto {
-  background: repeating-linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--cor-materia, #888) 55%, transparent) 0 4px,
-    color-mix(in srgb, var(--cor-materia, #888) 18%, transparent) 4px 8px
-  );
+  background: repeating-linear-gradient(135deg, var(--texto-3) 0 3px, transparent 3px 6px);
 }
 
 .regua__falta {
-  border: 1px dashed rgba(255, 177, 61, 0.6);
-  border-radius: 0 5px 5px 0;
-  background: var(--ambar-fantasma);
+  border: 1px dashed var(--destaque-borda);
+  border-radius: 0 3px 3px 0;
+  background: var(--destaque-suave);
 }
 
 .regua__marca {
   position: absolute;
-  top: -4px;
-  bottom: -4px;
+  top: -5px;
+  bottom: -5px;
   width: 2px;
   margin-left: -1px;
   border-radius: 1px;
   background: var(--texto);
-  box-shadow: 0 0 5px rgba(255, 255, 255, 0.35);
 }
 
 .regua__escala {
   position: relative;
   height: 18px;
-  margin-top: 4px;
+  margin-top: 6px;
   font-size: 11px;
   color: var(--texto-3);
 }
@@ -1126,24 +1312,20 @@ h2 {
 }
 
 .regua__amostra--obtido {
-  background: var(--cor-materia, var(--texto-2));
+  background: var(--texto-2);
 }
 
 .regua__amostra--previsto {
-  background: repeating-linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--cor-materia, #888) 60%, transparent) 0 2px,
-    color-mix(in srgb, var(--cor-materia, #888) 20%, transparent) 2px 4px
-  );
+  background: repeating-linear-gradient(135deg, var(--texto-3) 0 2px, transparent 2px 4px);
 }
 
 .regua__amostra--falta {
-  border: 1px dashed rgba(255, 177, 61, 0.7);
-  background: var(--ambar-fantasma);
+  border: 1px dashed var(--destaque-borda);
+  background: var(--destaque-suave);
 }
 
 .boletim__tabela {
-  margin-top: 16px;
+  margin-top: 18px;
 }
 
 .boletim__linha {
@@ -1151,12 +1333,11 @@ h2 {
   grid-template-columns: minmax(0, 1fr) 80px 52px 84px 210px;
   gap: 12px;
   align-items: center;
-  padding: 7px 4px;
+  padding: 8px 4px;
 }
 
 .boletim__linha + .boletim__linha {
-  border-top: 1px solid var(--sombra-linha);
-  box-shadow: inset 0 1px 0 var(--linha);
+  border-top: 1px solid var(--borda);
 }
 
 .boletim__linha--cabecalho {
@@ -1168,6 +1349,7 @@ h2 {
 .boletim__titulo {
   padding: 0;
   border: 0;
+  border-radius: 2px;
   background: none;
   color: var(--texto);
   font-weight: 500;
@@ -1176,14 +1358,14 @@ h2 {
 }
 
 .boletim__titulo:hover {
-  text-decoration: underline dotted rgba(255, 255, 255, 0.3);
+  text-decoration: underline dotted var(--borda-hover);
   text-underline-offset: 3px;
 }
 
 .boletim__linha--trocada .boletim__titulo {
   color: var(--texto-3);
   text-decoration: line-through;
-  text-decoration-color: rgba(255, 255, 255, 0.25);
+  text-decoration-color: var(--borda-hover);
 }
 
 .boletim__meta {
@@ -1197,18 +1379,24 @@ h2 {
   min-width: 22px;
   padding: 0;
   border: 0;
+  border-radius: 2px;
   background: none;
   color: var(--texto);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
-  text-decoration: underline dotted rgba(255, 255, 255, 0.25);
+  text-decoration: underline dotted var(--borda-hover);
   text-underline-offset: 3px;
+  transition: text-decoration-color var(--rapido) var(--curva);
+}
+
+.valor-editavel:hover {
+  text-decoration-color: var(--texto-3);
 }
 
 .valor-editavel--auto {
-  color: var(--ambar);
+  color: var(--destaque);
 }
 
 .campo-nota {
@@ -1216,7 +1404,7 @@ h2 {
 }
 
 .boletim__nota-rodape {
-  margin: 12px 0 0;
+  margin: 14px 0 0;
   max-width: 82ch;
   font-size: 12.5px;
   color: var(--texto-3);
@@ -1245,39 +1433,39 @@ h2 {
   color: var(--texto-3);
 }
 
+/* Botão secundário em tamanho de pill. */
 .mover__botao {
   height: 24px;
   padding: 0 9px;
-  border: 0;
-  border-radius: 6px;
-  background: var(--corpo-alto);
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-p);
+  background: transparent;
   color: var(--texto-2);
   font-size: 12.5px;
   cursor: pointer;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 2px 0 #121417,
-    0 3px 6px rgba(0, 0, 0, 0.4);
+  transition:
+    color var(--rapido) var(--curva),
+    border-color var(--rapido) var(--curva),
+    background var(--rapido) var(--curva);
 }
 
 .mover__botao:hover {
+  border-color: var(--borda-hover);
+  background: var(--superficie-2);
   color: var(--texto);
 }
 
 .mover__botao:active {
-  transform: translateY(1px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 1px 0 #121417;
+  background: var(--superficie-3);
 }
 
 .checkins {
   list-style: none;
   margin: 8px 0 0;
   padding: 8px 12px;
-  border-radius: 9px;
-  background: var(--corpo-baixo);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  background: var(--superficie-1);
   font-size: 12.5px;
   color: var(--texto-2);
 }
@@ -1298,15 +1486,19 @@ h2 {
 }
 
 .secao {
-  padding: 22px 0;
-  border-top: 1px solid var(--sombra-linha);
-  box-shadow: inset 0 1px 0 var(--linha);
+  padding: 24px 0;
+  border-top: 1px solid var(--borda);
 }
 
 .secao:first-of-type {
   border-top: 0;
-  box-shadow: none;
   padding-top: 0;
+}
+
+.secao > h2 {
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
 }
 
 .secao > p {
@@ -1315,17 +1507,16 @@ h2 {
   max-width: 68ch;
 }
 
+/* Situação do serviço de bloqueio: card com o LED e a ação ao lado. */
 .estado-bloqueio {
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
   margin-bottom: 14px;
-  border-radius: 12px;
-  background: var(--corpo-baixo);
-  box-shadow:
-    inset 0 1px 3px rgba(0, 0, 0, 0.5),
-    0 1px 0 var(--linha);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-g);
+  background: var(--superficie-1);
 }
 
 .estado-bloqueio div {
@@ -1356,7 +1547,7 @@ h2 {
 .grade-lembretes {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .lembrete-dia {
@@ -1364,9 +1555,16 @@ h2 {
   flex-direction: column;
   gap: 8px;
   padding: 10px;
-  border-radius: 10px;
-  background: var(--fundo-claro);
-  box-shadow: inset 0 1px 0 var(--linha), 0 0 0 1px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  background: var(--superficie-1);
+  transition:
+    opacity var(--rapido) var(--curva),
+    border-color var(--rapido) var(--curva);
+}
+
+.lembrete-dia:hover {
+  border-color: var(--borda-forte);
 }
 
 .lembrete-dia--desligado {
@@ -1386,14 +1584,41 @@ h2 {
 .campo-area,
 .seletor {
   width: 100%;
-  height: 38px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 9px;
-  background: var(--poco);
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.85),
-    0 1px 0 var(--linha);
+  height: 36px;
+  padding: 0 11px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-m);
+  background: var(--superficie-2);
+  transition:
+    border-color var(--rapido) var(--curva),
+    box-shadow var(--rapido) var(--curva);
+}
+
+.campo:hover,
+.campo-area:hover,
+.seletor:hover,
+.campo-meta:hover {
+  border-color: var(--borda-hover);
+}
+
+.campo:focus,
+.campo-area:focus,
+.seletor:focus,
+.campo-meta:focus {
+  outline: 0;
+  border-color: var(--destaque-borda);
+  box-shadow: var(--anel-foco);
+}
+
+.campo::placeholder,
+.campo-area::placeholder {
+  color: var(--texto-3);
+}
+
+.campo:disabled,
+.seletor:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .campo-area {
@@ -1405,7 +1630,7 @@ h2 {
 }
 
 .campo-area--codigo {
-  font-family: Consolas, 'Cascadia Mono', monospace;
+  font-family: var(--fonte-mono);
   font-size: 12.5px;
 }
 
@@ -1461,16 +1686,17 @@ h2 {
 .cor {
   width: 24px;
   height: 24px;
-  border: 0;
+  border: 1px solid var(--borda-forte);
   border-radius: 50%;
   background: var(--cor);
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 1px 3px rgba(0, 0, 0, 0.6);
+  transition: box-shadow var(--rapido) var(--curva);
 }
 
 .cor--escolhida {
-  outline: 2px solid var(--texto);
-  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--fundo),
+    0 0 0 3px var(--texto);
 }
 
 /* ---------- Modal ---------- */
@@ -1481,8 +1707,8 @@ h2 {
   z-index: 20;
   display: grid;
   place-items: center;
-  background: rgba(8, 9, 11, 0.62);
-  backdrop-filter: blur(3px);
+  background: var(--veu);
+  backdrop-filter: blur(4px);
 }
 
 .modal {
@@ -1490,24 +1716,24 @@ h2 {
   max-height: calc(100vh - 80px);
   overflow-y: auto;
   padding: 24px 26px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #2a2e35, #24272d);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    0 0 0 1px rgba(0, 0, 0, 0.6),
-    0 30px 80px rgba(0, 0, 0, 0.7);
-  animation: abrir 0.16s ease-out;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-g);
+  background: var(--superficie-1);
+  box-shadow: var(--sombra-flutuante);
+  animation: abrir var(--medio) var(--curva);
 }
 
 @keyframes abrir {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.985);
+    transform: translateY(6px);
   }
 }
 
 .modal h2 {
-  font-size: 18px;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
   margin-bottom: 6px;
 }
 
@@ -1520,9 +1746,9 @@ h2 {
 .frase-alvo {
   margin: 0 0 12px;
   padding: 14px 16px;
-  border-radius: 10px;
-  background: var(--poco);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.85);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  background: var(--fundo);
   font-size: 15px;
   line-height: 1.55;
   user-select: none;
@@ -1541,18 +1767,16 @@ h2 {
 
 /* ---------- Lembrete e avisos ---------- */
 
+/* Faixa "Hora de estudar": borda e um véu leve da cor de destaque, sem sombra. */
 .lembrete {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 22px;
-  padding: 14px 16px 14px 18px;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #2f2a20, #28241c);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 210, 140, 0.12),
-    0 0 0 1px rgba(0, 0, 0, 0.55),
-    0 10px 24px -10px rgba(0, 0, 0, 0.6);
+  gap: 14px;
+  margin-bottom: 24px;
+  padding: 12px 14px 12px 16px;
+  border: 1px solid var(--destaque-borda);
+  border-radius: var(--raio-g);
+  background: linear-gradient(90deg, var(--destaque-suave), transparent 70%), var(--superficie-1);
 }
 
 .lembrete div {
@@ -1561,7 +1785,7 @@ h2 {
 
 .lembrete strong {
   display: block;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .lembrete span {
@@ -1584,13 +1808,11 @@ h2 {
   gap: 12px;
   align-items: flex-start;
   padding: 12px 14px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #30343c, #2a2e35);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 0 0 1px rgba(0, 0, 0, 0.6),
-    0 14px 30px rgba(0, 0, 0, 0.55);
-  animation: abrir 0.16s ease-out;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-g);
+  background: var(--superficie-2);
+  box-shadow: var(--sombra-flutuante);
+  animation: abrir var(--medio) var(--curva);
 }
 
 .aviso span {
@@ -1616,6 +1838,7 @@ h2 {
   background: transparent;
 }
 
+/* Janela pequena por cima de tudo: superfície e borda, como os cards. */
 .mini {
   -webkit-app-region: drag;
   position: absolute;
@@ -1623,30 +1846,29 @@ h2 {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 12px 0 14px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #2e3239, #23262c);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 0 0 1px rgba(0, 0, 0, 0.7),
-    0 6px 14px rgba(0, 0, 0, 0.5);
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-g);
+  background: var(--superficie-1);
 }
 
 .mini__visor {
   position: relative;
-  padding: 7px 10px 6px;
-  border-radius: 9px;
-  background: var(--poco);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.95);
   flex: none;
-  font-family: 'SegmentosMini', monospace;
-  font-size: 22px;
+  padding: 6px 10px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  background: var(--fundo);
+  font-family: var(--fonte-mono);
+  font-size: 21px;
+  font-weight: 400;
   line-height: 1;
-  font-variant-numeric: normal;
+  letter-spacing: -0.04em;
 }
 
 .mini__visor .digitos__aceso {
-  padding: 7px 10px 6px;
+  padding: 6px 10px;
+  text-shadow: 0 0 14px rgba(var(--destaque-rgb), 0.25);
 }
 
 .mini__info {
@@ -1660,7 +1882,7 @@ h2 {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .mini__info span {
@@ -1673,4 +1895,27 @@ h2 {
 
 .mini .tecla {
   -webkit-app-region: no-drag;
+}
+
+
+/* ---------- Janela estreita (perto do mínimo de 1000px) ---------- */
+
+@media (max-width: 1100px) {
+  .conteudo {
+    padding: 28px 28px 48px;
+  }
+
+  .foco {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 20px;
+  }
+
+  .aparelho {
+    padding: 22px;
+  }
+
+  .calendario {
+    grid-template-columns: minmax(0, 1fr) 260px;
+    gap: 20px;
+  }
 }

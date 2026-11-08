@@ -141,11 +141,11 @@ function criarPrincipal(mostrar: boolean): void {
     minWidth: 1000,
     minHeight: 680,
     show: false,
-    backgroundColor: '#17191d',
+    backgroundColor: '#0b0c0e', // = --fundo do estilos.css
     title: 'App de Estudos',
     icon: recurso('icone.png'),
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#17191d', symbolColor: '#bdb7aa', height: 40 },
+    titleBarOverlay: { color: '#0b0c0e', symbolColor: '#a0a1a8', height: 40 }, // = --fundo e --texto-2
     webPreferences: { preload: PRELOAD, sandbox: true, contextIsolation: true }
   })
   principal.setMenu(null)
