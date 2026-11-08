@@ -51,6 +51,16 @@ describe('banco e repositório', () => {
     expect(repo.config().insistirMin).toBe(5)
   })
 
+  it('config da v1.1 com "reiniciarChrome" vira "reiniciarNavegador"', async () => {
+    const repo = new Repositorio(await Banco.abrir(null, wasm))
+    repo.gravarKv('config', { insistirMin: 10, reiniciarChrome: false })
+    expect(repo.config()).toMatchObject({ insistirMin: 10, reiniciarNavegador: false })
+    expect(repo.config()).not.toHaveProperty('reiniciarChrome')
+    repo.salvarConfig(repo.config())
+    expect(repo.lerKv('config')).not.toHaveProperty('reiniciarChrome')
+    expect(repo.config().reiniciarNavegador).toBe(false)
+  })
+
   it('v1.1: importa as notas que já saíram e as metas das provas passam a ser calculadas', async () => {
     const repo = new Repositorio(await Banco.abrir(null, wasm))
     prepararDados(repo)

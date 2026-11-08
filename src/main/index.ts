@@ -47,7 +47,7 @@ let metaAvisada: string | null = null
 let ultimoStatus = ''
 let ultimoDia = ''
 
-const STATUS_TESTE: StatusBloqueio = { instalado: true, vivo: true, bloqueado: true, erro: null }
+const STATUS_TESTE: StatusBloqueio = { instalado: true, vivo: true, bloqueado: true, erro: null, desatualizado: false }
 
 // ---------- Estado enviado às telas ----------
 function estado(): Estado {
@@ -379,6 +379,9 @@ async function capturar(pasta: string): Promise<void> {
   mkdirSync(pasta, { recursive: true })
   const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms))
   const w = principal!
+  // Com a janela atrás de outras, o Windows para de pintar e o print sai com a tela anterior.
+  w.webContents.setBackgroundThrottling(false)
+  const foto = async (wc: Electron.WebContents) => (await wc.capturePage(undefined, { stayAwake: true })).toPNG()
   w.show()
   await esperar(tem('captura-lembrete') ? 6500 : 1500)
   if (tem('captura-sessao')) {
@@ -394,22 +397,22 @@ async function capturar(pasta: string): Promise<void> {
   for (const tela of ['foco', 'plano', 'calendario', 'notas', 'ajustes']) {
     w.webContents.send('navegar', tela)
     await esperar(900)
-    writeFileSync(join(pasta, `${tela}.png`), (await w.webContents.capturePage()).toPNG())
+    writeFileSync(join(pasta, `${tela}.png`), await foto(w.webContents))
   }
   // Parte de baixo dos Ajustes.
   await w.webContents.executeJavaScript("document.querySelector('.conteudo').scrollTop = 99999")
   await esperar(400)
-  writeFileSync(join(pasta, 'ajustes-2.png'), (await w.webContents.capturePage()).toPNG())
+  writeFileSync(join(pasta, 'ajustes-2.png'), await foto(w.webContents))
   if (tem('captura-trava')) {
     w.webContents.send('navegar', 'foco')
     w.webContents.send('abrir-trava')
     await esperar(900)
-    writeFileSync(join(pasta, 'trava.png'), (await w.webContents.capturePage()).toPNG())
+    writeFileSync(join(pasta, 'trava.png'), await foto(w.webContents))
   }
   if (mini && repo.sessaoAtiva()) {
     mini.showInactive()
     await esperar(900)
-    writeFileSync(join(pasta, 'mini.png'), (await mini.webContents.capturePage()).toPNG())
+    writeFileSync(join(pasta, 'mini.png'), await foto(mini.webContents))
   }
   saindo = true
   repo.banco.fechar()
@@ -446,7 +449,8 @@ app.whenReady().then(async () => {
       if (modoTeste) return
       void bloqueio.ligar(repo.config(), reiniciar).then((r) => {
         if (!r.sites) avisar('O bloqueio de sites não está ligado: instale o serviço em Ajustes.')
-        if (r.chromeReiniciado) avisar('Reiniciei o Chrome para derrubar as abas que já estavam abertas.')
+        if (r.reiniciados.length > 0)
+          avisar(`Reiniciei o ${r.reiniciados.join(' e o ')} para derrubar as abas que já estavam abertas.`)
       })
     },
     desligarBloqueio: () => {

@@ -5,15 +5,32 @@
 # sem ele quando nao. Confere a cada segundo, entao se alguem (ou algum programa) apagar o
 # bloco no meio da sessao, ele volta sozinho.
 #
+# Enquanto bloqueia, tambem liga politicas dos navegadores que furariam o hosts:
+#  - Brave: sem janela privada com Tor (a Tor resolve o endereco fora do PC) e sem DNS seguro;
+#  - Chrome: sem DNS seguro.
+# Ao liberar, tira os valores que ele mesmo colocou. Se ja existia um valor diferente, ele e
+# trocado durante o bloqueio e removido depois (neste PC nao havia nenhum em 2026-11).
+#
 # Seguranca: o pedido.json pode ser escrito pelo usuario comum, entao este script so aceita
 # nomes de dominio validos e sempre aponta para 0.0.0.0 e ::. Nunca grava um IP vindo do pedido.
+# As politicas sao fixas aqui no script; nada do pedido vai para o registro.
 #
 # Este arquivo e so ASCII de proposito: o Windows PowerShell 5.1 le .ps1 sem BOM como ANSI.
 
 param(
   [string]$Pasta = (Join-Path $env:ProgramData 'AppDeEstudos'),
   [string]$Hosts = (Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'),
+  [string]$Politicas = 'HKLM:\SOFTWARE\Policies',
   [switch]$UmaVez
+)
+
+# Sobe quando o script muda. O app compara e pede para reinstalar se o instalado for mais velho.
+$VersaoServico = 2
+
+$Regras = @(
+  @{ Chave = 'BraveSoftware\Brave'; Nome = 'TorDisabled'; Valor = 1; Tipo = 'DWord' },
+  @{ Chave = 'BraveSoftware\Brave'; Nome = 'DnsOverHttpsMode'; Valor = 'off'; Tipo = 'String' },
+  @{ Chave = 'Google\Chrome'; Nome = 'DnsOverHttpsMode'; Valor = 'off'; Tipo = 'String' }
 )
 
 $ErrorActionPreference = 'Stop'
@@ -84,6 +101,32 @@ function Gravar-Hosts([string]$texto) {
   throw 'hosts em uso por outro programa'
 }
 
+# Liga ou desliga as politicas dos navegadores. Devolve $true se mudou alguma coisa.
+function Ajustar-Politicas([bool]$ligar) {
+  $mudou = $false
+  foreach ($r in $Regras) {
+    $chave = Join-Path $Politicas $r.Chave
+    $atual = $null
+    if (Test-Path -LiteralPath $chave) {
+      $item = Get-ItemProperty -LiteralPath $chave -ErrorAction SilentlyContinue
+      if ($item -and ($item.PSObject.Properties.Name -contains $r.Nome)) { $atual = $item.($r.Nome) }
+    }
+    $nosso = ($null -ne $atual) -and ("$atual" -eq "$($r.Valor)")
+    if ($ligar -and -not $nosso) {
+      if (-not (Test-Path -LiteralPath $chave)) { New-Item -Path $chave -Force | Out-Null }
+      New-ItemProperty -LiteralPath $chave -Name $r.Nome -Value $r.Valor -PropertyType $r.Tipo -Force | Out-Null
+      $mudou = $true
+    } elseif (-not $ligar -and $nosso) {
+      Remove-ItemProperty -LiteralPath $chave -Name $r.Nome
+      # Chave vazia nao serve para nada: tira para o navegador nao parecer "gerenciado".
+      $k = Get-Item -LiteralPath $chave
+      if ($k.ValueCount -eq 0 -and $k.SubKeyCount -eq 0) { Remove-Item -LiteralPath $chave }
+      $mudou = $true
+    }
+  }
+  return $mudou
+}
+
 function Escrever-Status($obj) {
   [IO.File]::WriteAllText($StatusPath, ($obj | ConvertTo-Json -Compress), $Utf8)
 }
@@ -112,6 +155,14 @@ while ($true) {
     $erro = $_.Exception.Message
   }
 
+  # Cuidado: PowerShell nao diferencia maiusculas, entao este nome nao pode ser "$politicas" (= $Politicas).
+  $politicasOk = $true
+  try {
+    if (Ajustar-Politicas ($bloquear -and $dominios.Count -gt 0)) { $mudou = $true }
+  } catch {
+    $politicasOk = $false
+  }
+
   if ($mudou) {
     try { & ipconfig.exe /flushdns | Out-Null } catch { }
   }
@@ -125,6 +176,8 @@ while ($true) {
         dominios  = $dominios
         vivoEm    = $agora
         erro      = $erro
+        politicas = $politicasOk
+        servico   = $VersaoServico
       }
       $ultimoStatus = $agora
       $ultimaVersao = $versao

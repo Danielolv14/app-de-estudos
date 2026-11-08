@@ -162,7 +162,9 @@ export function Foco({ estado, abrirTrava }: { estado: Estado; abrirTrava: numbe
             {ativa
               ? `Começou às ${hora(ativa.inicio)}. Pausas: ${formatarDuracao(pausaMs(ativa, agora))}. Na pausa o bloqueio continua.`
               : estado.bloqueio.vivo
-                ? 'Ao começar, o Instagram e o WhatsApp Web são bloqueados e o Chrome é reiniciado.'
+                ? estado.config.reiniciarNavegador
+                  ? 'Ao começar, o Instagram e o WhatsApp Web são bloqueados e o Brave é reiniciado.'
+                  : 'Ao começar, o Instagram e o WhatsApp Web são bloqueados.'
                 : 'O bloqueio de sites ainda não está instalado. Instale em Ajustes; o timer funciona sem ele.'}
           </p>
         </div>

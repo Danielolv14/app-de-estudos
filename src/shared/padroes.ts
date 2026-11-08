@@ -32,7 +32,7 @@ export const CONFIG_PADRAO: Config = {
   ],
   // Qualquer programa aberto de dentro destas pastas também é fechado (pega os jogos).
   pastasBloqueadas: ['\\steamapps\\common\\', '\\Epic Games\\', '\\Riot Games\\'],
-  reiniciarChrome: true,
+  reiniciarNavegador: true,
   lembretes: [
     { ativo: false, hora: '14:00' },
     { ativo: false, hora: '14:00' },

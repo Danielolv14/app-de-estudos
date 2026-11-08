@@ -198,7 +198,9 @@ export class Repositorio {
 
   /** Configuração salva, completada com os valores padrão (para campos novos de versões futuras). */
   config(): Config {
-    return { ...CONFIG_PADRAO, ...(this.ler<Partial<Config>>('config') ?? {}) }
+    // Até a v1.1 a opção se chamava `reiniciarChrome` (só o Chrome era reiniciado).
+    const { reiniciarChrome, ...salvo } = this.ler<Partial<Config> & { reiniciarChrome?: boolean }>('config') ?? {}
+    return { ...CONFIG_PADRAO, ...(reiniciarChrome !== undefined ? { reiniciarNavegador: reiniciarChrome } : {}), ...salvo }
   }
 
   salvarConfig(c: Config): void {

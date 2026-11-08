@@ -19,8 +19,8 @@ import type { Repositorio } from './repositorio'
 
 export type Ganchos = {
   agora: () => number
-  /** `reiniciarChrome` só é verdadeiro no começo de uma sessão nova. */
-  ligarBloqueio: (reiniciarChrome: boolean) => void
+  /** `reiniciarNavegador` só é verdadeiro no começo de uma sessão nova. */
+  ligarBloqueio: (reiniciarNavegador: boolean) => void
   desligarBloqueio: () => void
   mudou: () => void
 }

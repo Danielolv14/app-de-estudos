@@ -10,7 +10,7 @@ Decidida no grill-me de 2026-11-08. App de desktop para o PC pessoal (Windows) q
 | Onde roda | Só no PC pessoal. O estágio é presencial só na segunda, que é folga dos estudos; de terça a sexta é remoto, no PC pessoal. |
 | Bloqueio de sites | Arquivo `hosts` do Windows: Instagram e WhatsApp Web apontam para `0.0.0.0`. Vale para qualquer navegador. |
 | Permissão de admin | Um serviço do Windows instalado uma vez (único pedido de admin, na instalação). Na prática é uma tarefa agendada que roda como SYSTEM. O app fala com ele por arquivo: escreve `pedido.json` em `C:\ProgramData\AppDeEstudos` e lê a resposta em `status.json`. Fechar o app não desbloqueia, e o estado fica salvo em disco: se o PC reiniciar no meio da sessão, continua bloqueado. |
-| Abas já abertas | Ao iniciar a sessão, se o Chrome estiver aberto, o app fecha o navegador normalmente e reabre com `--restore-last-session`. As abas voltam, e Instagram e WhatsApp Web não conectam mais. |
+| Navegador | O Daniel usa o **Brave** (definido em 2026-11-08). Ao iniciar a sessão, o app fecha o Brave normalmente e reabre com `--restore-last-session`. Faz o mesmo com o Chrome, se estiver aberto. As abas voltam, e Instagram e WhatsApp Web não conectam mais. Enquanto bloqueia, o serviço tira do Brave a janela privada com Tor e o DNS seguro, pelas políticas `TorDisabled` e `DnsOverHttpsMode`, porque os dois furariam o hosts. |
 | Apps do PC | Durante a sessão, o serviço fecha WhatsApp Desktop, Steam (e os jogos), Epic Games e Riot Client se forem abertos. O Discord fica liberado. A lista é editável. |
 | Timer | Conta para cima (nada de Pomodoro). Fica ligado a uma tarefa do plano: as horas vão para a matéria e, ao terminar, a tarefa é marcada como feita. |
 | Pausa | Continua bloqueado. O tempo pausado não conta como estudo e aparece no histórico ("2h10 estudando, 15 min de pausa"). |
@@ -28,7 +28,12 @@ Decidida no grill-me de 2026-11-08. App de desktop para o PC pessoal (Windows) q
 - **Painel de constância:** mapa de calor das horas por dia, sequência de dias cumpridos e relatório da semana (planejado x feito).
 - **Lembrete** e **bloqueio de apps do PC** (descritos acima).
 
-Ficaram de fora: caderno de erros, contador de tentativas e bloqueio agendado.
+Ficaram de fora: caderno de erros e contador de tentativas.
+
+**Bloqueio agendado (pedido em 2026-11-08, ainda não feito):** o bloqueio de sites e apps liga sozinho em dias e horários configurados no app, mesmo sem o timer rodando.
+- Os dias e horários são editáveis em Ajustes.
+- Dentro do horário, só termina antes do fim se a meta do dia for batida, pela mesma regra da trava. Em dia sem meta, não bloqueia.
+- Junto com ele: enquanto houver bloqueio (sessão ou agendado), as listas de sites e apps e a agenda ficam travadas em Ajustes. Sem isso, dá para tirar o Instagram da lista e furar o bloqueio.
 
 ## Entregas
 Em 2026-11-08 a ordem mudou para seguir o calendário das provas: o plano do semestre já estava importado, então ler o PDF do plano de ensino só ajuda no começo de 2027/1.
@@ -45,5 +50,7 @@ Em 2026-11-08 a ordem mudou para seguir o calendário das provas: o plano do sem
 
 ## Limites conhecidos
 - Não bloqueia o celular. Para ele, use o Bem-estar digital (Android) ou o Tempo de Uso (iPhone).
-- Só o Chrome é reiniciado. Outro navegador com a aba já aberta continua conectado até recarregar a página (as conexões novas são bloqueadas em qualquer navegador).
+- Só o Brave e o Chrome são reiniciados. Outro navegador com a aba já aberta continua conectado até recarregar a página (as conexões novas são bloqueadas em qualquer navegador).
+- Uma VPN ou um proxy que resolva os endereços fora do PC passa por cima do hosts.
+- Hoje, as listas de sites e apps podem ser editadas no meio da sessão. A trava delas vem junto com o bloqueio agendado.
 - Quem tem admin no PC consegue desfazer o bloqueio. A trava serve contra o impulso, não contra a decisão de parar.

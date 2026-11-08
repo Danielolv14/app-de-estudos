@@ -37,7 +37,9 @@ export function Ajustes({ estado }: { estado: Estado }) {
     ? { led: false, cor: 'vermelho' as const, titulo: 'Bloqueio de sites não instalado', texto: 'O timer e o fechamento dos apps funcionam, mas o Instagram e o WhatsApp Web continuam abrindo.' }
     : !bloqueio.vivo
       ? { led: true, cor: 'ambar' as const, titulo: 'O serviço não está respondendo', texto: 'Reinicie o PC. Se continuar assim, instale de novo.' }
-      : bloqueio.bloqueado
+      : bloqueio.desatualizado
+        ? { led: true, cor: 'ambar' as const, titulo: 'O serviço precisa ser atualizado', texto: 'Esta versão também protege o bloqueio no Brave. Clique em Reinstalar e confirme a janela de administrador.' }
+        : bloqueio.bloqueado
         ? { led: true, cor: 'vermelho' as const, titulo: 'Bloqueando agora', texto: 'A sessão está em andamento. Os sites voltam quando ela terminar.' }
         : { led: true, cor: 'verde' as const, titulo: 'Pronto para bloquear', texto: 'Os sites são bloqueados quando você começa a estudar.' }
 
@@ -79,9 +81,13 @@ export function Ajustes({ estado }: { estado: Estado }) {
         {mensagem && <p className="mudo">{mensagem}</p>}
 
         <label className="opcao" style={{ margin: '6px 0 18px' }}>
-          <input type="checkbox" className="marcar" checked={config.reiniciarChrome} onChange={(e) => salvar({ reiniciarChrome: e.target.checked })} />
-          Reiniciar o Chrome ao começar a sessão, para derrubar as abas que já estavam abertas
+          <input type="checkbox" className="marcar" checked={config.reiniciarNavegador} onChange={(e) => salvar({ reiniciarNavegador: e.target.checked })} />
+          Reiniciar o Brave (e o Chrome, se estiver aberto) ao começar a sessão, para derrubar as abas que já estavam abertas
         </label>
+        <p className="mudo" style={{ margin: '-8px 0 18px', maxWidth: '68ch' }}>
+          Durante o bloqueio, o Brave fica sem a janela privada com Tor e sem o DNS seguro, porque os dois passariam por cima do
+          bloqueio. Por isso ele mostra &ldquo;gerenciado pela sua organização&rdquo; até a sessão terminar.
+        </p>
 
         <div className="form">
           <div className="form__linha">

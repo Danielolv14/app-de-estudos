@@ -83,7 +83,8 @@ export type Config = {
   dominios: string[]
   processos: string[]
   pastasBloqueadas: string[]
-  reiniciarChrome: boolean
+  /** Reiniciar o Brave e o Chrome (os que estiverem abertos) no começo da sessão. Antes da v1.2 se chamava `reiniciarChrome`. */
+  reiniciarNavegador: boolean
   /** Um lembrete por dia da semana, de domingo (0) a sábado (6). */
   lembretes: Lembrete[]
   /** Minutos entre um lembrete e o próximo, até o timer começar. */
@@ -100,6 +101,8 @@ export type StatusBloqueio = {
   vivo: boolean
   /** O hosts está com o bloqueio aplicado agora. */
   bloqueado: boolean
+  /** O serviço instalado é de uma versão mais velha do script: precisa reinstalar. */
+  desatualizado: boolean
   erro: string | null
 }
 

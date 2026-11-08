@@ -99,7 +99,9 @@ function StatusBloqueio({ estado, irParaAjustes }: { estado: Estado; irParaAjust
       ? ['Bloqueio sem resposta', 'Reinicie o PC.', 'ambar', true]
       : b.bloqueado
         ? ['Sites bloqueados', 'Até a sessão terminar.', 'vermelho', true]
-        : ['Bloqueio pronto', 'Liga quando o timer começar.', 'verde', true]
+        : b.desatualizado
+          ? ['Atualize o bloqueio', 'Clique em Reinstalar em Ajustes.', 'ambar', true]
+          : ['Bloqueio pronto', 'Liga quando o timer começar.', 'verde', true]
   return (
     <button className="lateral__rodape" style={{ border: 0, textAlign: 'left', cursor: 'pointer' }} onClick={irParaAjustes}>
       <strong>

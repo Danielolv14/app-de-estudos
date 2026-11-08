@@ -29,7 +29,7 @@ beforeEach(async () => {
 const tarefaDeHoje = () => repo.tarefas().find((t) => t.data === '2026-11-10')!
 
 describe('sessão de estudo', () => {
-  it('começa na tarefa, liga o bloqueio com reinício do Chrome e não abre duas sessões', () => {
+  it('começa na tarefa, liga o bloqueio com reinício do navegador e não abre duas sessões', () => {
     const t = tarefaDeHoje()
     const a = sessao.iniciar(t.id)
     expect(a).toMatchObject({ tarefaId: t.id, materiaId: t.materiaId, dia: '2026-11-10', status: 'estudando' })
@@ -93,7 +93,7 @@ describe('sessão de estudo', () => {
     expect(sessao.encerrar({ marcarFeita: false })).toEqual({ ok: true })
   })
 
-  it('recupera a sessão depois de o PC desligar: volta pausada e religa o bloqueio sem mexer no Chrome', () => {
+  it('recupera a sessão depois de o PC desligar: volta pausada e religa o bloqueio sem reiniciar o navegador', () => {
     sessao.iniciar(tarefaDeHoje().id)
     agora += 20 * MIN
     sessao.batimento()

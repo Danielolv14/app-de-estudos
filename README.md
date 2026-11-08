@@ -18,7 +18,15 @@ e bloqueio de Instagram, WhatsApp Web e jogos enquanto a sessão estiver aberta.
 - **Bloqueio de sites:** um serviço do Windows (tarefa agendada que roda como SYSTEM) mantém um bloco no arquivo
   `hosts` enquanto a sessão estiver aberta. O app só escreve um pedido em `C:\ProgramData\AppDeEstudos\pedido.json`;
   o serviço aceita apenas nomes de domínio e sempre aponta para `0.0.0.0`.
-- **Abas já abertas:** o hosts não derruba conexões abertas, então o app reinicia o Chrome no começo da sessão.
+- **Abas já abertas:** o hosts não derruba conexões abertas, então o app reinicia o Brave (e o Chrome, se estiver
+  aberto) no começo da sessão, restaurando as abas.
+- **Brave:** enquanto bloqueia, o serviço liga duas políticas em `HKLM\SOFTWARE\Policies\BraveSoftware\Brave`. A
+  `TorDisabled` tira a janela privada com Tor, e a `DnsOverHttpsMode=off` tira o DNS seguro. As duas furariam o
+  hosts. Ao liberar, ele tira as duas (no Chrome, só a do DNS). Por isso o Brave mostra "gerenciado pela sua
+  organização" durante a sessão.
+- **Atualizar o serviço:** o script do serviço fica em `C:\Program Files\App de Estudos - Bloqueio` e não muda
+  quando o app é atualizado. Se o script novo for de outra versão (`$VersaoServico`), a tela Ajustes pede para
+  clicar em **Reinstalar**.
 - **Apps do PC:** durante a sessão, um PowerShell em segundo plano fecha WhatsApp Desktop, Steam, Epic, Riot e
   qualquer programa aberto de dentro das pastas de jogos.
 - **Resumo no Obsidian:** o app reescreve `02-Areas/Painel de estudos (app).md` no vault a cada mudança.
