@@ -1,0 +1,39 @@
+{
+  "name": "app-de-estudos",
+  "productName": "App de Estudos",
+  "version": "1.0.0",
+  "description": "Timer, plano, calendário de provas e bloqueio de distrações para estudar.",
+  "author": "Daniel Oliveira de Menezes",
+  "private": true,
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "icones": "node scripts/gerar-icones.mjs",
+    "instalador": "electron-vite build && electron-builder --win"
+  },
+  "dependencies": {
+    "sql.js": "^1.13.0"
+  },
+  "devDependencies": {
+    "@fontsource/ibm-plex-sans": "^5.2.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/sql.js": "^1.4.9",
+    "@vitejs/plugin-react": "^6.0.0",
+    "dseg": "^0.46.0",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.0.0",
+    "electron-vite": "^6.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sharp": "^0.34.0",
+    "typescript": "^5.9.0",
+    "vite": "^8.0.0",
+    "vitest": "^5.0.0"
+  }
+}

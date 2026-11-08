@@ -1,0 +1,31 @@
+appId: com.danielolv.appdeestudos
+productName: App de Estudos
+copyright: Daniel Oliveira de Menezes
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+asarUnpack:
+  - node_modules/sql.js/dist/sql-wasm.wasm
+extraResources:
+  - from: resources
+    to: .
+    filter: ['icone.png', 'bandeja.png']
+  - from: servico
+    to: servico
+win:
+  icon: resources/icone.png
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: App de Estudos
+  artifactName: App-de-Estudos-${version}-instalador.${ext}
