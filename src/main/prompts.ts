@@ -211,3 +211,152 @@ export function pedidoReplanejar(situacao: string, montar: boolean): string {
     `- ${ESCRITA}`
   ].join('\n')
 }
+
+// ---------- Aula da sessão (a IA como professor) ----------
+
+const EXERCICIO = objeto({
+  enunciado: str,
+  origem: str,
+  nivel: { type: 'string', enum: ['facil', 'medio', 'dificil'] },
+  dica: str,
+  resolucao: str,
+  resposta: str
+})
+
+export const FORMATO_AULA = objeto({
+  titulo: str,
+  objetivo: str,
+  roteiro: { type: 'array', items: str },
+  secoes: {
+    type: 'array',
+    items: objeto({
+      titulo: str,
+      texto: str,
+      formulas: { type: 'array', items: str },
+      exemplo: ouNulo(objeto({ enunciado: str, resolucao: str }))
+    })
+  },
+  armadilhas: { type: 'array', items: str },
+  exercicios: { type: 'array', items: EXERCICIO },
+  fontes: { type: 'array', items: str },
+  avisos: str
+})
+
+export type DadosAula = {
+  materia: string
+  tema: string
+  /** Tarefa do plano ligada à sessão (título e detalhe). */
+  tarefa: string | null
+  minutos: number | null
+  /** Próxima avaliação da matéria, com o que cai. */
+  avaliacao: string | null
+  travou: string[]
+  pontosFracos: string[]
+  bibliografia: string
+  pedido: string
+  /** Caminhos completos do material (PDFs e fotos) na pasta da tarefa. */
+  materiais: string[]
+}
+
+export function pedidoAula(d: DadosAula): string {
+  const linhas = [
+    'Você é o professor particular de um aluno de graduação (PUC Minas). Prepare o material da sessão de estudo de hoje: ele vai estudar sozinho com este material, na ordem, e resolver os exercícios no papel. Depois ele vai te mandar as respostas e as dúvidas.',
+    '',
+    `Matéria: ${d.materia}`,
+    `Tema da sessão: ${d.tema}`
+  ]
+  if (d.tarefa) linhas.push(`Tarefa do plano: ${d.tarefa}`)
+  if (d.minutos) linhas.push(`Tempo da sessão: ${d.minutos} minutos`)
+  if (d.avaliacao) linhas.push(`Próxima avaliação: ${d.avaliacao}`)
+  if (d.bibliografia.trim()) linhas.push(`Bibliografia da matéria: ${d.bibliografia.trim().replace(/\n+/g, '; ')}`)
+  if (d.travou.length > 0) linhas.push('', 'Onde o aluno travou nas últimas sessões desta matéria:', ...d.travou.map((t) => `- ${t}`))
+  if (d.pontosFracos.length > 0) linhas.push('', 'Pontos fracos nos últimos simulados:', ...d.pontosFracos.map((t) => `- ${t}`))
+  if (d.pedido.trim()) linhas.push('', `Pedido do aluno: ${d.pedido.trim()}`)
+  linhas.push('')
+  if (d.materiais.length > 0)
+    linhas.push(
+      'Material do professor da disciplina, tirado do Canvas ou do PC do aluno (leia com a ferramenta Read; num PDF grande, leia só as páginas do tema):',
+      ...d.materiais.map((m) => `- "${m}"`),
+      'Baseie a explicação nesse material: a mesma notação, os mesmos nomes e o mesmo nível. Se ele tiver exercícios (nos slides ou numa lista), use esses primeiro, porque são os que mais parecem com a prova, e diga de onde vieram em "origem" (ex.: "slide 23 de g_desempenho_ES.pdf"). Se algum arquivo não for do tema, ignore e diga isso em "avisos".'
+    )
+  else linhas.push('Não há material do professor desta vez. Use o conteúdo padrão da disciplina no nível de graduação e diga isso em "avisos", numa frase.')
+  linhas.push(
+    'Se a tarefa citar exercícios de um livro (ex.: "3.9 (1, 3, 5)"), você não tem o livro: crie exercícios parecidos, no mesmo nível, com "origem" do tipo "parecido com o 3.9 do livro".',
+    '',
+    'Como montar:',
+    '- "titulo": o tema em poucas palavras (ex.: "Desempenho e Lei de Amdahl").',
+    '- "objetivo": uma frase com o que ele vai saber fazer no fim da sessão.',
+    '- "roteiro": de 3 a 6 passos da ordem de estudo, com o tempo de cada um, cabendo na sessão (ex.: "Parte 1, desempenho da CPU (20 min)", "Exercícios 1 a 4 (30 min)", "Corrigir com o gabarito (10 min)").',
+    '- "secoes": de 2 a 6 partes, do básico ao que mais cai. Em cada uma, "texto" explica como um bom professor explica para quem está vendo pela primeira vez: a ideia primeiro (com uma analogia quando ajudar), depois o detalhe e o que costuma cair em prova. "formulas" traz as fórmulas e regras para decorar, uma por item (lista vazia se não houver). "exemplo" é um exemplo resolvido passo a passo, com as contas (null se a parte for só teoria).',
+    '- "armadilhas": até 6 erros comuns em prova e como evitar cada um.',
+    '- "exercicios": de 5 a 10, do mais fácil ao mais difícil, cobrindo todas as partes. Cada um com "nivel", "dica" (um empurrão que não entrega a resposta), "resolucao" passo a passo e "resposta" (só o resultado final). Resolva cada exercício você mesmo e confira a conta antes de responder. O aluno só vê a dica e a resolução quando pedir.',
+    '- "fontes": os nomes dos arquivos que você usou de verdade (só o nome, sem a pasta).',
+    '- "avisos": o que o aluno precisa saber sobre o material (vazio se não houver nada).',
+    `- ${ESCRITA}`
+  )
+  return linhas.join('\n')
+}
+
+export const FORMATO_PROFESSOR = objeto({
+  resposta: str,
+  exercicio: ouNulo(int),
+  situacao: ouNulo({ type: 'string', enum: ['acertei', 'parcial', 'errei'] })
+})
+
+export type DadosProfessor = {
+  materia: string
+  tema: string
+  /** A aula em JSON (com as resoluções). */
+  aula: string
+  materiais: string[]
+  /** Últimas mensagens, já no formato "Aluno: ..." ou "Professor: ...". */
+  conversa: string[]
+  texto: string
+  fotos: string[]
+  exercicio: number | null
+}
+
+export function pedidoProfessor(d: DadosProfessor): string {
+  const linhas = [
+    `Você é o professor particular de um aluno de graduação (PUC Minas), no meio de uma sessão de estudo de ${d.materia} sobre "${d.tema}".`,
+    'A aula que você preparou para ele, em JSON (ele só vê a dica e a resolução de cada exercício quando pede):',
+    d.aula
+  ]
+  if (d.materiais.length > 0)
+    linhas.push('', 'Material do professor da disciplina (leia com a ferramenta Read só se precisar conferir algo):', ...d.materiais.map((m) => `- "${m}"`))
+  if (d.conversa.length > 0) linhas.push('', 'A conversa até agora:', ...d.conversa)
+  linhas.push('', `Agora o aluno escreveu: ${d.texto.trim() || '(sem texto, só as fotos)'}`)
+  if (d.exercicio !== null) linhas.push(`Ele disse que é sobre o exercício ${d.exercicio}.`)
+  if (d.fotos.length > 0) linhas.push('Ele mandou fotos da resolução no papel. Leia todas com a ferramenta Read:', ...d.fotos.map((f) => `- "${f}"`))
+  linhas.push(
+    '',
+    'Responda como um bom professor, em "resposta":',
+    '- Se for a resolução de um exercício: resolva de novo antes de olhar a dele, diga se está certo, aponte exatamente o passo em que errou e por quê, e mostre o caminho certo. Preencha "exercicio" com o número e "situacao" com acertei, parcial ou errei. Se a mensagem não for a resolução de um exercício, os dois ficam null.',
+    '- Se for dúvida: explique de outro jeito, mais simples e com um exemplo pequeno, sem repetir o texto da aula.',
+    '- Se ele pedir mais exercícios, um resumo ou outro exemplo, faça na própria resposta (com a resposta final de cada exercício novo no fim, separada).',
+    '- Direto ao ponto: no máximo uns 12 parágrafos curtos. Se a foto estiver ilegível, diga o que não deu para ler.',
+    `- ${ESCRITA}`
+  )
+  return linhas.join('\n')
+}
+
+export const FORMATO_EXERCICIOS = objeto({ exercicios: { type: 'array', items: EXERCICIO } })
+
+export type DadosMaisExercicios = { materia: string; tema: string; aula: string; materiais: string[]; errados: string[]; pedido: string }
+
+export function pedidoMaisExercicios(d: DadosMaisExercicios): string {
+  const linhas = [
+    `Você é o professor particular de um aluno de graduação (PUC Minas), numa sessão de estudo de ${d.materia} sobre "${d.tema}". A aula que você preparou, em JSON:`,
+    d.aula
+  ]
+  if (d.materiais.length > 0) linhas.push('', 'Material do professor da disciplina (leia com a ferramenta Read se precisar):', ...d.materiais.map((m) => `- "${m}"`))
+  if (d.errados.length > 0) linhas.push('', 'Exercícios em que ele errou ou acertou só em parte:', ...d.errados.map((e) => `- ${e}`))
+  if (d.pedido.trim()) linhas.push('', `Pedido do aluno: ${d.pedido.trim()}`)
+  linhas.push(
+    '',
+    'Crie de 3 a 6 exercícios novos, diferentes dos que já estão na aula, focando no que ele errou (ou, se não errou nada, um pouco mais difíceis), do mais fácil ao mais difícil.',
+    'Cada um com "origem" (de onde veio, ou "novo"), "nivel", "dica" (sem entregar a resposta), "resolucao" passo a passo e "resposta" (só o resultado final). Resolva cada um você mesmo e confira a conta.',
+    `- ${ESCRITA}`
+  )
+  return linhas.join('\n')
+}

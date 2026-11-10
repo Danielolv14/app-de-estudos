@@ -84,7 +84,18 @@ const api: Api = {
   aplicarRevisaoCanvas: chamar('canvas:aplicarRevisao') as Api['aplicarRevisaoCanvas'],
   ignorarRevisaoCanvas: chamar('canvas:ignorarRevisao') as Api['ignorarRevisaoCanvas'],
   arquivosCanvas: chamar('canvas:arquivos') as Api['arquivosCanvas'],
-  baixarCanvas: chamar('canvas:baixar') as Api['baixarCanvas']
+  baixarCanvas: chamar('canvas:baixar') as Api['baixarCanvas'],
+
+  aula: chamar('aula:ler') as Api['aula'],
+  montarAula: chamar('aula:montar') as Api['montarAula'],
+  perguntarAula: chamar('aula:perguntar') as Api['perguntarAula'],
+  maisExercicios: chamar('aula:maisExercicios') as Api['maisExercicios'],
+  marcarExercicio: chamar('aula:marcar') as Api['marcarExercicio'],
+  removerAula: chamar('aula:remover') as Api['removerAula'],
+  escolherMaterialAula: chamar('aula:escolherMaterial') as Api['escolherMaterialAula'],
+  escolherFotosAula: chamar('aula:escolherFotos') as Api['escolherFotosAula'],
+  miniaturaAula: chamar('aula:miniatura') as Api['miniaturaAula'],
+  salvarAulaNoVault: chamar('aula:salvarNoVault') as Api['salvarAulaNoVault']
 }
 
 contextBridge.exposeInMainWorld('api', api)

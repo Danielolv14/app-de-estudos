@@ -37,7 +37,7 @@ e bloqueio de Instagram, WhatsApp Web e jogos enquanto a sessão estiver aberta.
 
 ### IA, pelo Claude Code
 
-O simulado, a correção por foto, a leitura do plano de ensino e o replanejamento usam o **Claude Code instalado no
+A aula, o simulado, a correção por foto, a leitura do plano de ensino e o replanejamento usam o **Claude Code instalado no
 PC** (`claude -p`), com a assinatura do Daniel. Não tem chave de API.
 
 - **Login:** o Claude Code de linha de comando tem login próprio, separado do app desktop. Uma vez só, rode
@@ -56,6 +56,15 @@ PC** (`claude -p`), com a assinatura do Daniel. Não tem chave de API.
   resolução de cada questão escondida até a prova acabar. "Começar" abre uma sessão de estudo com cronômetro. As
   fotos da folha entram arrastando para a tela (JPG, PNG ou WEBP; HEIC não). A nota e os pontos fracos vão para o
   check-in e para o resumo do vault, e as sugestões viram tarefas do plano.
+- **Aula (a IA como professor):** no Foco, "Preparar a aula" (ou a tela **Aula**) manda o tema da tarefa, a próxima
+  avaliação, onde o Daniel travou e até 6 PDFs (o app sugere os do Canvas com o nome parecido com o tema). A IA
+  devolve a ordem de estudo, as partes com fórmulas e exemplo resolvido, as armadilhas e de 5 a 10 exercícios com
+  dica e gabarito escondidos. Embaixo, a conversa com o professor: a resposta de um exercício (texto ou foto) volta
+  corrigida e marca o exercício (certo, em parte, errado). "Mais exercícios" foca nos errados, e "Salvar no
+  Obsidian" grava a aula em `Aulas do app/` ao lado do resumo do vault. Tabela `aulas`; o material fica em
+  `%APPDATA%\App de Estudos\aulas\<id>` para as perguntas depois.
+- **Sigla da matéria:** os avisos de cima mostram a sigla (CAL, ERS, IHC), automática pelo nome ou escrita em
+  Ajustes, e tiram o nome da matéria do título ("Prova 3 de Cálculo" vira "CAL Prova 3").
 
 ### Canvas da PUC
 
@@ -127,6 +136,6 @@ Sai em `dist/App-de-Estudos-<versão>-instalador.exe`. Depois de instalar, abra 
 | `src/shared` | Tipos e regras puras (timer, meta, trava, lembrete, notas, constância, validação das respostas da IA, resumo do vault) |
 | `src/main` | Processo principal do Electron: banco (sql.js), sessão, bloqueio, lembrete, IA (`claude.ts`, `assistente.ts`, `prompts.ts`, `planejamento.ts`), janelas e bandeja |
 | `src/preload` | Ponte segura entre as telas e o processo principal |
-| `src/renderer` | Telas em React: Foco, Plano, Calendário, Notas, Simulado, Constância, Ajustes e o mini-timer |
+| `src/renderer` | Telas em React: Foco, Aula, Plano, Calendário, Notas, Simulado, Constância, Ajustes e o mini-timer (Ctrl+1 a Ctrl+8 trocam de tela) |
 | `servico` | Scripts PowerShell do serviço de bloqueio (instalar, rodar, desinstalar) |
 | `testes` | Testes com Vitest |

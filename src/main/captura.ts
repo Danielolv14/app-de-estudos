@@ -1,6 +1,6 @@
 // Dados de mentira para as capturas de tela (só com --captura-ia, numa pasta de dados temporária).
 // Servem para conferir o visual das telas da IA sem chamar o Claude Code.
-import type { CursoCanvas, ItemCanvas, Mudanca } from '@shared/tipos'
+import type { ArquivoCanvas, ConteudoAula, CursoCanvas, ItemCanvas, Mudanca } from '@shared/tipos'
 import { compararCanvas } from '@shared/canvas'
 import { dataLocal, somarDias } from '@shared/regras'
 import type { Repositorio } from './repositorio'
@@ -188,4 +188,186 @@ export function dadosFalsosDeCanvas(repo: Repositorio): void {
     'canvas_cursos',
     cursos.map((c) => ({ id: c.id, nome: c.nome }))
   )
+}
+
+/** PDFs de mentira do curso de Cálculo, para a sugestão de material na Nova aula. */
+export const ARQUIVOS_FALSOS_CANVAS: ArquivoCanvas[] = [
+  { id: 7001, cursoId: 101, nome: 'Slides 3.4 e 3.5 - Regra da cadeia e derivação implícita.pdf', tamanho: 2_340_000, modulo: 'Unidade 3: Derivadas' },
+  { id: 7002, cursoId: 101, nome: 'Lista 3 - Derivadas.pdf', tamanho: 410_000, modulo: 'Unidade 3: Derivadas' },
+  { id: 7003, cursoId: 101, nome: 'Slides 3.9 - Taxas relacionadas.pdf', tamanho: 1_800_000, modulo: 'Unidade 3: Derivadas' },
+  { id: 7004, cursoId: 101, nome: 'Plano de ensino - Cálculo I.pdf', tamanho: 190_000, modulo: 'Informações gerais' },
+  { id: 7005, cursoId: 101, nome: 'Slides 4.4 - Regra de LHôpital.pdf', tamanho: 1_200_000, modulo: 'Unidade 4: Aplicações' }
+]
+
+/** Duas aulas prontas: a da tarefa de hoje (Cálculo), com exercícios marcados e conversa, e uma mais antiga. */
+export function dadosFalsosDeAula(repo: Repositorio, agora: number): void {
+  const hoje = dataLocal(agora)
+  const materias = repo.materiasAtivas()
+  const calculo = materias.find((m) => /c[aá]lculo/i.test(m.nome))
+  const arquitetura = materias.find((m) => /arquitetura/i.test(m.nome))
+  if (!calculo) return
+  const tarefa = repo.tarefas().find((t) => t.data === hoje && !t.feita && t.materiaId === calculo.id)
+
+  const conteudo: ConteudoAula = {
+    titulo: 'Regra da cadeia e derivação implícita',
+    objetivo:
+      'Derivar funções compostas sem esquecer a derivada de dentro e achar dy/dx quando o y não está isolado. É a base das taxas relacionadas, que caem na P3.',
+    roteiro: [
+      'Entender a regra da cadeia como "de fora para dentro"',
+      'Treinar composições com potência, raiz, seno e exponencial',
+      'Derivação implícita: derivar os dois lados e isolar y′',
+      'Fazer os exercícios 1 a 4 sem olhar o gabarito',
+      'Mandar as respostas para o professor corrigir'
+    ],
+    secoes: [
+      {
+        titulo: 'Regra da cadeia',
+        texto:
+          'Pense em engrenagens: se a de fora gira 3 vezes mais rápido que a do meio, e a do meio 2 vezes mais rápido que a de dentro, a de fora gira 6 vezes mais rápido que a de dentro. A derivada de uma composição é o produto das taxas.\n\nNa prática: derive a função de fora mantendo o miolo intacto e multiplique pela derivada do miolo. O erro clássico é parar no primeiro passo.',
+        formulas: ["(f(g(x)))′ = f′(g(x)) · g′(x)", 'dy/dx = dy/du · du/dx'],
+        exemplo: {
+          enunciado: 'Derive y = (3x² + 1)⁵.',
+          resolucao: 'Fora: u⁵, com u = 3x² + 1. A derivada de fora é 5u⁴ = 5(3x² + 1)⁴.\nDentro: u′ = 6x.\nResultado: y′ = 5(3x² + 1)⁴ · 6x = 30x(3x² + 1)⁴.'
+        }
+      },
+      {
+        titulo: 'Derivação implícita',
+        texto:
+          'Quando a equação mistura x e y (como x² + y² = 25), isolar o y dá trabalho ou nem é possível. Derive os dois lados em relação a x, tratando y como uma função de x: toda vez que derivar algo com y, multiplique por y′. É a regra da cadeia de novo.\n\nDepois junte os termos com y′ de um lado, ponha y′ em evidência e isole.',
+        formulas: ['d/dx (y²) = 2y · y′', 'd/dx (xy) = y + x · y′'],
+        exemplo: {
+          enunciado: 'Ache dy/dx em x² + y² = 25 e a inclinação da tangente no ponto (3, 4).',
+          resolucao: '2x + 2y · y′ = 0\ny′ = −x / y\nNo ponto (3, 4): y′ = −3/4.'
+        }
+      }
+    ],
+    armadilhas: [
+      'Esquecer a derivada de dentro: (sen 3x)′ é 3 cos 3x, não cos 3x.',
+      'Na implícita, derivar y² como 2y, sem o y′.',
+      'Em xy, usar a regra do produto: a derivada é y + x · y′, não só y′.',
+      'Errar o sinal ao passar um termo com y′ para o outro lado.'
+    ],
+    exercicios: [
+      {
+        numero: 1,
+        enunciado: 'Derive f(x) = √(x² + 4x).',
+        origem: 'Slide 12 (exemplos do professor)',
+        nivel: 'facil',
+        dica: 'Escreva a raiz como potência 1/2 e use a cadeia.',
+        resolucao: 'f(x) = (x² + 4x)^(1/2)\nf′(x) = ½ (x² + 4x)^(−1/2) · (2x + 4) = (x + 2) / √(x² + 4x)',
+        resposta: 'f′(x) = (x + 2) / √(x² + 4x)'
+      },
+      {
+        numero: 2,
+        enunciado: 'Derive y = sen(x³).',
+        origem: 'Lista 3, exercício 9',
+        nivel: 'facil',
+        dica: 'Fora é o seno, dentro é x³.',
+        resolucao: 'y′ = cos(x³) · 3x²',
+        resposta: 'y′ = 3x² cos(x³)'
+      },
+      {
+        numero: 3,
+        enunciado: 'Derive y = e^(cos 2x).',
+        origem: 'Lista 3, exercício 23',
+        nivel: 'medio',
+        dica: 'São três camadas: exponencial, cosseno e 2x.',
+        resolucao: 'y′ = e^(cos 2x) · (−sen 2x) · 2',
+        resposta: 'y′ = −2 sen(2x) · e^(cos 2x)'
+      },
+      {
+        numero: 4,
+        enunciado: 'Ache dy/dx em x³ + y³ = 6xy.',
+        origem: 'Slide 20 (folium de Descartes)',
+        nivel: 'medio',
+        dica: 'O lado direito pede a regra do produto.',
+        resolucao: '3x² + 3y² · y′ = 6y + 6x · y′\ny′ (3y² − 6x) = 6y − 3x²\ny′ = (2y − x²) / (y² − 2x)',
+        resposta: 'y′ = (2y − x²) / (y² − 2x)'
+      },
+      {
+        numero: 5,
+        enunciado: 'Ache a equação da reta tangente à curva x² + xy + y² = 3 no ponto (1, 1).',
+        origem: 'Parecido com o Stewart 3.5, exercício 27',
+        nivel: 'dificil',
+        dica: 'Ache y′ pela implícita, troque x e y por 1 e use y − y₀ = m(x − x₀).',
+        resolucao: '2x + y + x · y′ + 2y · y′ = 0\ny′ = −(2x + y) / (x + 2y)\nEm (1, 1): y′ = −3/3 = −1\nReta: y − 1 = −(x − 1)',
+        resposta: 'y = −x + 2'
+      },
+      {
+        numero: 6,
+        enunciado: 'Derive g(t) = (t² − 1)³ / (t + 2)².',
+        origem: 'Criado a partir do slide 15',
+        nivel: 'dificil',
+        dica: 'Regra do quociente por fora e cadeia no numerador e no denominador.',
+        resolucao:
+          'g′ = [3(t² − 1)² · 2t · (t + 2)² − (t² − 1)³ · 2(t + 2)] / (t + 2)⁴\nPondo (t² − 1)² (t + 2) em evidência:\ng′ = (t² − 1)² [6t(t + 2) − 2(t² − 1)] / (t + 2)³',
+        resposta: 'g′(t) = (t² − 1)² (4t² + 12t + 2) / (t + 2)³'
+      }
+    ],
+    fontes: ['Slides 3.4 e 3.5 - Regra da cadeia e derivação implícita.pdf', 'Lista 3 - Derivadas.pdf'],
+    avisos: ''
+  }
+  const id = repo.criarAula({
+    tarefaId: tarefa?.id ?? null,
+    materiaId: calculo.id,
+    tema: tarefa ? `${tarefa.titulo}\n${tarefa.detalhe}` : 'Regra da cadeia e derivação implícita',
+    criadaEm: agora - 50 * 60_000,
+    conteudo,
+    materiais: conteudo.fontes
+  })
+  repo.atualizarAula(
+    id,
+    {
+      progresso: { '1': 'acertei', '2': 'acertei', '3': 'parcial', '4': 'errei' },
+      conversa: [
+        { de: 'aluno', texto: 'Deu y′ = (2y − x²) / (y² − x).', quando: agora - 20 * 60_000, fotos: [], exercicio: 4 },
+        {
+          de: 'professor',
+          texto:
+            'Quase. A estrutura está certa (juntar os y′ de um lado e isolar), mas o 6xy pede a regra do produto: a derivada é 6y + 6x · y′. Em algum passo você usou 3x · y′, por isso apareceu y² − x no denominador em vez de y² − 2x.\n\nRefaça só o lado direito com calma. Marquei como errado; o exercício 5 usa a mesma ideia e é um bom treino.',
+          quando: agora - 19 * 60_000,
+          fotos: [],
+          exercicio: 4
+        },
+        { de: 'aluno', texto: 'Por que na implícita eu multiplico por y′ e na derivada normal não?', quando: agora - 12 * 60_000, fotos: [], exercicio: null },
+        {
+          de: 'professor',
+          texto:
+            'Porque o y é uma função de x escondida. Quando você deriva x², a variável é o próprio x, e a derivada de dentro é 1. Quando deriva y², é como derivar (g(x))²: pela regra da cadeia sai 2 g(x) · g′(x), ou seja, 2y · y′. O y′ é a "derivada de dentro".',
+          quando: agora - 11 * 60_000,
+          fotos: [],
+          exercicio: null
+        }
+      ]
+    },
+    agora - 11 * 60_000
+  )
+
+  if (!arquitetura) return
+  const antiga = repo.criarAula({
+    tarefaId: null,
+    materiaId: arquitetura.id,
+    tema: 'Desempenho e Lei de Amdahl',
+    criadaEm: agora - 3 * 24 * HORA,
+    materiais: ['Aula 05 - Desempenho.pdf'],
+    conteudo: {
+      titulo: 'Desempenho e Lei de Amdahl',
+      objetivo: 'Calcular o ganho de uma melhoria que só acelera parte do programa.',
+      roteiro: ['Tempo de CPU', 'Lei de Amdahl', 'Exercícios'],
+      secoes: [{ titulo: 'Lei de Amdahl', texto: 'O ganho total é limitado pela parte que não melhora.', formulas: ['S = 1 / ((1 − Fm) + Fm / Sm)'], exemplo: null }],
+      armadilhas: ['Somar os ganhos das partes em vez de somar os tempos.'],
+      exercicios: [1, 2, 3, 4, 5].map((n) => ({
+        numero: n,
+        enunciado: `Exercício ${n} sobre speedup.`,
+        origem: 'Slide 18',
+        nivel: 'medio' as const,
+        dica: '',
+        resolucao: '...',
+        resposta: '...'
+      })),
+      fontes: ['Aula 05 - Desempenho.pdf'],
+      avisos: ''
+    }
+  })
+  repo.atualizarAula(antiga, { progresso: { '1': 'acertei', '2': 'acertei', '3': 'acertei', '4': 'errei', '5': 'acertei' } }, agora - 3 * 24 * HORA)
 }

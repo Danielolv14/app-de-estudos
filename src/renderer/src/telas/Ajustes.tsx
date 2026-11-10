@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import type { BlocoSemana, Config, Estado, Materia } from '@shared/tipos'
 import { CORES_MATERIA } from '@shared/padroes'
+import { siglaAutomatica } from '@shared/sigla'
 import { formatarDuracao } from '@shared/regras'
 import { Led, Modal } from '../componentes/Basicos'
 import { IconeFechar, IconeMais } from '../componentes/Icones'
@@ -171,6 +172,7 @@ export function Ajustes({ estado }: { estado: Estado }) {
         <h2>
           Matérias <span className="titulo-apagado">de {estado.semestre}</span>
         </h2>
+        <p>O nome, a sigla que aparece nos avisos de cima (vazia, o app monta uma pelo nome) e a cor.</p>
         {materias.map((m) => (
           <LinhaMateria key={m.id} materia={m} />
         ))}
@@ -219,6 +221,7 @@ export function Ajustes({ estado }: { estado: Estado }) {
 
 function LinhaMateria({ materia }: { materia: Materia }) {
   const [nome, setNome] = useState(materia.nome)
+  const [sigla, setSigla] = useState(materia.sigla)
   const salvar = (parcial: Partial<Materia>) => void window.api.salvarMateria({ ...materia, nome: nome.trim() || materia.nome, ...parcial })
   return (
     <div className="linha-campo">
@@ -229,6 +232,16 @@ function LinhaMateria({ materia }: { materia: Materia }) {
         onChange={(e) => setNome(e.target.value)}
         onBlur={() => nome.trim() !== materia.nome && salvar({})}
         aria-label="Nome da matéria"
+      />
+      <input
+        className="campo campo-sigla"
+        value={sigla}
+        maxLength={6}
+        onChange={(e) => setSigla(e.target.value.toUpperCase())}
+        onBlur={() => sigla.trim() !== materia.sigla && salvar({ sigla: sigla.trim() })}
+        placeholder={siglaAutomatica(nome || materia.nome)}
+        aria-label="Sigla da matéria"
+        title="Sigla que aparece nos avisos de cima. Vazia, o app usa a do lado, montada pelo nome."
       />
       <div className="cores">
         {CORES_MATERIA.map((c) => (

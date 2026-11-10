@@ -1,15 +1,19 @@
 import type {
   ArquivoCanvas,
+  Aula,
   Config,
   Estado,
   Evento,
   LeituraPlano,
   Materia,
+  PedidoAula,
   PedidoEncerrar,
   PedidoSimulado,
+  PerguntaAula,
   ResultadoEncerrar,
   RevisaoCanvas,
   SessaoAtiva,
+  SituacaoExercicio,
   Tarefa
 } from '../shared/tipos'
 
@@ -33,7 +37,7 @@ export type Api = {
   removerTarefa(id: number): Promise<void>
   salvarEvento(e: Omit<Evento, 'id' | 'conteudo'> & { id?: number; conteudo?: string }): Promise<number>
   removerEvento(id: number): Promise<void>
-  salvarMateria(m: Pick<Materia, 'nome' | 'cor'> & { id?: number; bibliografia?: string }): Promise<number>
+  salvarMateria(m: Pick<Materia, 'nome' | 'cor'> & { id?: number; bibliografia?: string; sigla?: string }): Promise<number>
   removerMateria(id: number): Promise<void>
   arquivarMateria(id: number, arquivada: boolean): Promise<void>
   virarSemestre(novo: string, apagarPendentes: boolean): Promise<{ arquivadas: number; apagadas: number }>
@@ -89,6 +93,20 @@ export type Api = {
   arquivosCanvas(cursoId: number): Promise<{ ok: true; arquivos: ArquivoCanvas[] } | { ok: false; mensagem: string }>
   /** Baixa o PDF e devolve o caminho dele no PC. */
   baixarCanvas(arquivoId: number): Promise<{ ok: true; caminho: string } | { ok: false; mensagem: string }>
+
+  // Aula da IA (o professor da sessão)
+  /** A aula inteira (o estado só traz o resumo). */
+  aula(id: number): Promise<Aula | null>
+  montarAula(p: PedidoAula): Promise<Resultado>
+  perguntarAula(p: PerguntaAula): Promise<Resultado>
+  maisExercicios(aulaId: number, pedido: string): Promise<Resultado>
+  marcarExercicio(aulaId: number, numero: number, situacao: SituacaoExercicio | null): Promise<void>
+  removerAula(id: number): Promise<void>
+  escolherMaterialAula(): Promise<string[]>
+  escolherFotosAula(): Promise<string[]>
+  miniaturaAula(aulaId: number, foto: string): Promise<string | null>
+  /** Grava a aula em Markdown no vault. `mensagem` vazia: o Daniel cancelou a escolha do arquivo. */
+  salvarAulaNoVault(id: number): Promise<Resultado>
 }
 
 declare global {

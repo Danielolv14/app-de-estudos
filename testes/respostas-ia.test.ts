@@ -112,8 +112,8 @@ describe('respostas da IA', () => {
     const t = (id: number, data: string, feita = false): Tarefa => ({ id, materiaId: 1, data, titulo: `T${id}`, detalhe: '', minutos: 60, feita, ordem: id })
     const tarefas = [t(1, '2026-11-12'), t(2, '2026-11-13'), t(3, '2026-11-09', true), t(4, '2026-11-14'), t(5, '2026-11-15')]
     const materias: Materia[] = [
-      { id: 1, nome: 'Cálculo', cor: '#fff', arquivada: false, semestre: '2026/2', bibliografia: '' },
-      { id: 2, nome: 'Velha', cor: '#fff', arquivada: true, semestre: '2026/1', bibliografia: '' }
+      { id: 1, nome: 'Cálculo', cor: '#fff', arquivada: false, semestre: '2026/2', bibliografia: '', sigla: '' },
+      { id: 2, nome: 'Velha', cor: '#fff', arquivada: true, semestre: '2026/1', bibliografia: '', sigla: '' }
     ]
     const v = validarMudancas(
       {

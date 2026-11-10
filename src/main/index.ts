@@ -3,15 +3,28 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, s
 import { copyFileSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, extname, join } from 'node:path'
-import type { Config, Estado, LeituraPlano, PedidoEncerrar, PedidoSimulado, RevisaoCanvas, StatusBloqueio } from '@shared/tipos'
+import type {
+  Config,
+  Estado,
+  LeituraPlano,
+  PedidoAula,
+  PedidoEncerrar,
+  PedidoSimulado,
+  PerguntaAula,
+  RevisaoCanvas,
+  SituacaoExercicio,
+  StatusBloqueio
+} from '@shared/tipos'
 import { dataLocal, estudoMs, formatarDuracao } from '@shared/regras'
 import { gerarResumo } from '@shared/resumo'
+import { aulaEmMarkdown, nomeArquivoAula } from '@shared/aula'
+import { siglaDe } from '@shared/sigla'
 import { Banco } from './banco'
 import { Repositorio, type NovaMateria, type NovaTarefa, type NovoEvento } from './repositorio'
-import { Assistente, FOTOS_ACEITAS, MODELOS_ACEITOS } from './assistente'
+import { Assistente, FOTOS_ACEITAS, MAX_MATERIAIS_AULA, MODELOS_ACEITOS } from './assistente'
 import { aplicarLeitura, aplicarProposta } from './planejamento'
 import { prepararDados } from './seed'
-import { dadosFalsosDeCanvas, dadosFalsosDeIa } from './captura'
+import { ARQUIVOS_FALSOS_CANVAS, dadosFalsosDeAula, dadosFalsosDeCanvas, dadosFalsosDeIa } from './captura'
 import { revisaoCanvas, SincroniaCanvas } from './sincronia-canvas'
 import { GerenciadorSessao } from './sessao'
 import { ControleBloqueio, desinstalarServico, instalarServico, nomeAmigavel, statusBloqueio } from './bloqueio'
@@ -78,7 +91,8 @@ function estado(): Estado {
     leituraPlano: repo.leituraPlano(),
     propostaPlano: repo.propostaPlano(),
     canvas: canvas.estado(),
-    revisaoCanvas: revisaoCanvas(repo)
+    revisaoCanvas: revisaoCanvas(repo),
+    aulas: repo.aulas()
   }
 }
 
@@ -449,6 +463,61 @@ function registrarIpc(): void {
   h('canvas:ignorarRevisao', () => canvas.ignorarRevisao())
   ipcMain.handle('canvas:arquivos', (_e, cursoId: number) => canvas.arquivos(cursoId))
   ipcMain.handle('canvas:baixar', (_e, arquivoId: number) => canvas.baixar(arquivoId))
+
+  // ---------- Aula da IA (o professor da sessão) ----------
+  ipcMain.handle('aula:ler', (_e, id: number) => repo.aula(id) ?? null)
+  h('aula:montar', (p: PedidoAula) =>
+    assistente.montarAula(p, async (ids) => {
+      // PDF que não baixa (o professor tirou, a internet caiu) fica de fora; a aula sai com o resto.
+      const caminhos: string[] = []
+      let falhou = 0
+      for (const id of ids) {
+        const r = await canvas.baixar(id)
+        if (r.ok) caminhos.push(r.caminho)
+        else falhou++
+      }
+      if (falhou > 0) avisar(`Não consegui baixar ${falhou} ${falhou === 1 ? 'PDF' : 'PDFs'} do Canvas. A aula vai sem ${falhou === 1 ? 'ele' : 'eles'}.`)
+      return caminhos
+    })
+  )
+  h('aula:perguntar', (p: PerguntaAula) => assistente.perguntar(p))
+  h('aula:maisExercicios', (id: number, pedido: string) => assistente.maisExercicios(id, pedido))
+  h('aula:marcar', (id: number, numero: number, situacao: SituacaoExercicio | null) => assistente.marcarExercicio(id, numero, situacao))
+  h('aula:remover', (id: number) => assistente.removerAula(id))
+  h('aula:escolherMaterial', () => escolherArquivos('Material da aula (PDF ou foto)', MODELOS_ACEITOS, true).then((a) => a.slice(0, MAX_MATERIAIS_AULA)))
+  h('aula:escolherFotos', () => escolherArquivos('Fotos da resolução', FOTOS_ACEITAS, true))
+  ipcMain.handle('aula:miniatura', (_e, id: number, foto: string) => {
+    const img = nativeImage.createFromPath(join(assistente.pastaAula(id), basename(foto)))
+    return img.isEmpty() ? null : img.resize({ width: 320, quality: 'good' }).toDataURL()
+  })
+  h('aula:salvarNoVault', async (id: number) => {
+    const a = repo.aula(id)
+    if (!a) return { ok: false, mensagem: 'Aula não encontrada.' }
+    const materia = repo.materias().find((m) => m.id === a.materiaId)
+    const nome = nomeArquivoAula(materia ? siglaDe(materia) : 'Estudo', a.conteudo.titulo)
+    // Fica ao lado do resumo do vault, numa pasta só das aulas. Sem resumo ligado, pergunta onde salvar.
+    const resumo = repo.config().caminhoResumoVault
+    let destino: string
+    if (resumo && existsSync(dirname(resumo))) destino = join(dirname(resumo), 'Aulas do app', nome)
+    else {
+      const r = await dialog.showSaveDialog(principal!, {
+        title: 'Onde salvar a aula',
+        defaultPath: join(homedir(), 'Documents', nome),
+        filters: [{ name: 'Nota do Obsidian', extensions: ['md'] }]
+      })
+      if (r.canceled || !r.filePath) return { ok: false, mensagem: '' }
+      destino = r.filePath
+    }
+    try {
+      mkdirSync(dirname(destino), { recursive: true })
+      writeFileSync(destino, aulaEmMarkdown(a, materia?.nome ?? 'Estudo livre'), 'utf8')
+    } catch (e) {
+      return { ok: false, mensagem: `Não consegui salvar: ${(e as Error).message}` }
+    }
+    const curto = resumo && destino.startsWith(dirname(resumo)) ? `Aulas do app\\${nome}` : destino
+    avisar(`Aula salva no Obsidian: ${curto}`)
+    return { ok: true, mensagem: destino }
+  })
 }
 
 /** Foto grande demais para a IA (o limite é 5 MB por imagem): diminui para 2000 px e grava em JPG. */
@@ -536,11 +605,13 @@ async function capturar(pasta: string): Promise<void> {
   if (tem('captura-ia')) {
     dadosFalsosDeIa(repo, agora())
     dadosFalsosDeCanvas(repo)
+    dadosFalsosDeAula(repo, agora())
+    canvas.guardarArquivos(101, ARQUIVOS_FALSOS_CANVAS)
     mudou()
     await esperar(400)
   }
   const js = (codigo: string) => w.webContents.executeJavaScript(codigo)
-  for (const tela of ['foco', 'plano', 'calendario', 'notas', 'simulado', 'constancia', 'ajustes']) {
+  for (const tela of ['foco', 'aula', 'plano', 'calendario', 'notas', 'simulado', 'constancia', 'ajustes']) {
     w.webContents.send('navegar', tela)
     await esperar(900)
     writeFileSync(join(pasta, `${tela}.png`), await foto(w.webContents))
@@ -555,6 +626,19 @@ async function capturar(pasta: string): Promise<void> {
       }
       await js("document.querySelector('.voltar')?.click()")
       await esperar(300)
+    }
+    // A aula da tarefa de hoje, de cima a baixo; depois a lista e o formulário de uma aula nova.
+    if (tela === 'aula' && tem('captura-ia')) {
+      for (const [i, onde] of ['0.3', '0.6', '1'].entries()) {
+        await js(`(() => { const c = document.querySelector('.conteudo'); c.scrollTop = (c.scrollHeight - c.clientHeight) * ${onde} })()`)
+        await esperar(500)
+        writeFileSync(join(pasta, `aula-${i + 2}.png`), await foto(w.webContents))
+      }
+      await js("document.querySelector('.voltar')?.click()")
+      await esperar(400)
+      await js("document.querySelector('.titulo-tela .tecla--ambar')?.click()")
+      await esperar(1200)
+      writeFileSync(join(pasta, 'aula-nova.png'), await foto(w.webContents))
     }
     if (tela === 'plano' || tela === 'calendario') {
       await js("document.querySelector('.conteudo').scrollTop = 0")

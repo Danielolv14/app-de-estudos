@@ -15,14 +15,14 @@ import { Digitos, Led, estiloMateria, nomeDe } from '../componentes/Basicos'
 import { Brilho, FundoGrade } from '../componentes/Decoracao'
 import { Encerrar } from '../componentes/Encerrar'
 import { MoverAtrasada } from '../componentes/Atrasada'
-import { IconeParar, IconePausa, IconeTocar } from '../componentes/Icones'
+import { IconeAula, IconeParar, IconePausa, IconeTocar } from '../componentes/Icones'
 import { useAgora } from '../usarEstado'
 
 const SEGMENTOS = 30
 
 const hora = (ms: number) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
-export function Foco({ estado, abrirTrava }: { estado: Estado; abrirTrava: number }) {
+export function Foco({ estado, abrirTrava, abrirAula }: { estado: Estado; abrirTrava: number; abrirAula: (tarefaId: number | null) => void }) {
   const agora = useAgora(estado)
   const { ativa, materias, tarefas, hoje } = estado
   const deHoje = tarefas.filter((t) => t.data === hoje)
@@ -44,6 +44,9 @@ export function Foco({ estado, abrirTrava }: { estado: Estado; abrirTrava: numbe
   const fracao = meta > 0 ? Math.min(1, estudado / (meta * 60_000)) : 0
   const acesos = Math.floor(fracao * SEGMENTOS)
   const batida = meta > 0 && estudado >= meta * 60_000
+
+  const aulaDaTarefa = tarefa ? estado.aulas.find((a) => a.tarefaId === tarefa.id) : undefined
+  const preparandoAula = estado.ia.trabalho?.tipo === 'montar-aula'
 
   const statusVisor = ativa ? ativa.status : 'parado'
   const tempo = ativa ? estudoMs(ativa, agora) : 0
@@ -157,6 +160,16 @@ export function Foco({ estado, abrirTrava }: { estado: Estado; abrirTrava: numbe
                 Encerrar
               </button>
             )}
+            {(tarefa || ativa) && (
+              <button
+                className="tecla tecla--grande aparelho__aula"
+                onClick={() => abrirAula(tarefa?.id ?? null)}
+                title="A IA explica o tema com o material do Canvas, passa exercícios e corrige as suas respostas"
+              >
+                <IconeAula />
+                {aulaDaTarefa ? 'Abrir a aula' : preparandoAula ? 'Preparando a aula...' : 'Preparar a aula'}
+              </button>
+            )}
           </div>
 
           <p className="aparelho__info">
@@ -196,7 +209,7 @@ export function Foco({ estado, abrirTrava }: { estado: Estado; abrirTrava: numbe
       {encerrando && (
         <Encerrar
           tarefa={ativa?.tarefaId ? tarefas.find((t) => t.id === ativa.tarefaId) : undefined}
-          sugestao={checkinDoSimulado(estado)}
+          sugestao={checkinDoSimulado(estado) ?? checkinDaAula(estado)}
           aoFechar={() => setEncerrando(false)}
         />
       )}
@@ -213,6 +226,17 @@ function checkinDoSimulado(estado: Estado): { feito: string; travou: string } | 
   return {
     feito: `Simulado: ${formatarNota(c.nota)} de ${formatarNota(c.total)} (estimado pela IA)`.slice(0, 300),
     travou: c.pontosFracos.slice(0, 3).join('; ').slice(0, 300)
+  }
+}
+
+/** Se a tarefa da sessão teve aula, o check-in já vem com os exercícios (os errados vão para o "onde travou"). */
+function checkinDaAula(estado: Estado): { feito: string; travou: string } | undefined {
+  const tarefaId = estado.ativa?.tarefaId
+  const a = tarefaId ? estado.aulas.find((x) => x.tarefaId === tarefaId) : undefined
+  if (!a || a.feitos === 0) return undefined
+  return {
+    feito: `Aula: ${a.titulo}. ${a.certos} de ${a.feitos} ${a.feitos === 1 ? 'exercício certo' : 'exercícios certos'}`.slice(0, 300),
+    travou: a.paraRever.slice(0, 3).join('; ').slice(0, 300)
   }
 }
 

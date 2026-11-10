@@ -146,3 +146,27 @@ export const IconeFoto = ({ tamanho = 16 }: P) => (
     <circle cx="12" cy="12.5" r="3.3" />
   </svg>
 )
+
+/** Livro aberto (a aula da IA). */
+export const IconeAula = ({ tamanho }: P) => (
+  <svg {...base(tamanho)}>
+    <path d="M12 6.5c-1.8-1.3-4.3-2-7.5-2v13c3.2 0 5.7.7 7.5 2 1.8-1.3 4.3-2 7.5-2v-13c-3.2 0-5.7.7-7.5 2z" />
+    <path d="M12 6.5v13" />
+  </svg>
+)
+
+/** Avião de papel (mandar a mensagem). */
+export const IconeEnviar = ({ tamanho = 16 }: P) => (
+  <svg {...base(tamanho)}>
+    <path d="M20.5 3.5l-17 7 6.5 2.5 2.5 6.5z" />
+    <path d="M10 13l10.5-9.5" />
+  </svg>
+)
+
+/** Lâmpada (dica). */
+export const IconeDica = ({ tamanho = 15 }: P) => (
+  <svg {...base(tamanho)}>
+    <path d="M9 17.5h6M10 20.5h4" />
+    <path d="M12 3.5a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V17h5v-.6c0-.8.4-1.5 1-2A6 6 0 0 0 12 3.5z" />
+  </svg>
+)

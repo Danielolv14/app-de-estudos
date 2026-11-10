@@ -2,6 +2,11 @@
 // inventar tarefa que não existe ou pôr data no passado: nada disso pode quebrar o app nem estragar o plano.
 import type {
   AulaLida,
+  ConteudoAula,
+  ExercicioAula,
+  NivelExercicio,
+  SecaoAula,
+  SituacaoExercicio,
   AvaliacaoLida,
   Correcao,
   CorrecaoQuestao,
@@ -213,4 +218,82 @@ export function validarMudancas(
     }
   }
   return { resumo: texto(d.resumo, 1500), mudancas, descartadas: brutas.length - mudancas.length }
+}
+
+// ---------- Aula da sessão ----------
+
+const NIVEIS: NivelExercicio[] = ['facil', 'medio', 'dificil']
+
+/** Confere os exercícios e numera em sequência a partir de `inicio` (a IA às vezes repete ou pula número). */
+export function validarExercicios(dados: unknown, inicio = 1, max = 12): ExercicioAula[] {
+  return lista(dados)
+    .map(obj)
+    .filter((e) => texto(e.enunciado) !== '')
+    .slice(0, max)
+    .map((e, i) => ({
+      numero: inicio + i,
+      enunciado: texto(e.enunciado),
+      origem: texto(e.origem, 200),
+      nivel: NIVEIS.find((n) => n === e.nivel) ?? 'medio',
+      dica: texto(e.dica, 1500),
+      resolucao: texto(e.resolucao, 8000),
+      resposta: texto(e.resposta, 1000)
+    }))
+}
+
+/** Confere a aula montada pela IA. Sem explicação nenhuma não serve; sem exercício, serve (a tela oferece "Mais exercícios"). */
+export function validarAula(dados: unknown, arquivos: string[]): ConteudoAula {
+  const d = obj(dados)
+  const secoes: SecaoAula[] = lista(d.secoes)
+    .map(obj)
+    .filter((x) => texto(x.texto) !== '')
+    .slice(0, 8)
+    .map((x, i) => {
+      const ex = obj(x.exemplo)
+      const enunciado = texto(ex.enunciado, 3000)
+      const resolucao = texto(ex.resolucao, 8000)
+      return {
+        titulo: texto(x.titulo, 160) || `Parte ${i + 1}`,
+        texto: texto(x.texto, 12000),
+        formulas: lista(x.formulas).map((f) => texto(f, 400)).filter(Boolean).slice(0, 12),
+        exemplo: enunciado || resolucao ? { enunciado, resolucao } : null
+      }
+    })
+  if (secoes.length === 0) throw new RespostaInvalida('A IA não devolveu a explicação da aula. Tente de novo.')
+  // Fontes: só os arquivos que existem na pasta (a IA pode citar um caminho inteiro ou um nome inventado).
+  const nomes = new Map(arquivos.map((a) => [a.toLowerCase(), a]))
+  const fontes = [
+    ...new Set(
+      lista(d.fontes)
+        .map((f) => texto(f, 300).split(/[\\/]/).pop() ?? '')
+        .map((f) => nomes.get(f.toLowerCase()))
+        .filter((f): f is string => !!f)
+    )
+  ]
+  return {
+    titulo: texto(d.titulo, 160) || 'Aula',
+    objetivo: texto(d.objetivo, 600),
+    roteiro: lista(d.roteiro).map((r) => texto(r, 300)).filter(Boolean).slice(0, 8),
+    secoes,
+    armadilhas: lista(d.armadilhas).map((a) => texto(a, 600)).filter(Boolean).slice(0, 8),
+    exercicios: validarExercicios(d.exercicios),
+    fontes,
+    avisos: texto(d.avisos, 1000)
+  }
+}
+
+const SITUACOES_EXERCICIO: SituacaoExercicio[] = ['acertei', 'parcial', 'errei']
+
+/** Resposta do professor. A marca do exercício só vale para um exercício que existe e com uma situação conhecida. */
+export function validarRespostaProfessor(
+  dados: unknown,
+  numeros: number[]
+): { resposta: string; exercicio: number | null; situacao: SituacaoExercicio | null } {
+  const d = obj(dados)
+  const resposta = texto(d.resposta, 12000)
+  if (!resposta) throw new RespostaInvalida('O professor não respondeu nada. Tente de novo.')
+  const n = numero(d.exercicio)
+  const exercicio = n !== null && numeros.includes(n) ? n : null
+  const situacao = exercicio !== null ? (SITUACOES_EXERCICIO.find((s) => s === d.situacao) ?? null) : null
+  return { resposta, exercicio: situacao ? exercicio : null, situacao }
 }

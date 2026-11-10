@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { Estado } from '@shared/tipos'
-import { diasAte, proximasAvaliacoes, textoContagem } from '@shared/regras'
+import { diaMes, diasAte, estudoMs, formatarRelogio, nomeDiaSemana, proximasAvaliacoes, textoContagem } from '@shared/regras'
+import { formatarNota } from '@shared/notas'
+import { siglaDe, tituloSemMateria } from '@shared/sigla'
 import { estiloMateria, Led, nomeDe } from './componentes/Basicos'
 import {
   IconeAjustes,
+  IconeAula,
   IconeCalendario,
   IconeConstancia,
   IconeFechar,
@@ -20,11 +23,13 @@ import { Notas } from './telas/Notas'
 import { Ajustes } from './telas/Ajustes'
 import { Simulado } from './telas/Simulado'
 import { Constancia } from './telas/Constancia'
+import { Aula, type AlvoAula } from './telas/Aula'
 
-type Tela = 'foco' | 'plano' | 'calendario' | 'notas' | 'simulado' | 'constancia' | 'ajustes'
+type Tela = 'foco' | 'aula' | 'plano' | 'calendario' | 'notas' | 'simulado' | 'constancia' | 'ajustes'
 
 const TELAS: { id: Tela; nome: string; Icone: typeof IconeFoco }[] = [
   { id: 'foco', nome: 'Foco', Icone: IconeFoco },
+  { id: 'aula', nome: 'Aula', Icone: IconeAula },
   { id: 'plano', nome: 'Plano', Icone: IconePlano },
   { id: 'calendario', nome: 'Calendário', Icone: IconeCalendario },
   { id: 'notas', nome: 'Notas', Icone: IconeNotas },
@@ -37,29 +42,59 @@ export function App() {
   const estado = useEstado()
   const [tela, setTela] = useState<Tela>('foco')
   const [abrirTrava, setAbrirTrava] = useState(0)
+  const [alvoAula, setAlvoAula] = useState<AlvoAula | null>(null)
 
   useEffect(() => window.api.aoNavegar((t) => setTela(t as Tela)), [])
   useEffect(() => window.api.aoAbrirTrava(() => setAbrirTrava((n) => n + 1)), [])
 
+  // Ctrl+1 a Ctrl+8 trocam de tela, na ordem do menu.
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => {
+      if (!e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return
+      const n = Number(e.key)
+      if (n >= 1 && n <= TELAS.length) {
+        e.preventDefault()
+        setTela(TELAS[n - 1].id)
+      }
+    }
+    window.addEventListener('keydown', tecla)
+    return () => window.removeEventListener('keydown', tecla)
+  }, [])
+
   if (!estado) return null
+
+  const abrirAula = (tarefaId: number | null) => {
+    setAlvoAula({ tarefaId, vez: Date.now() })
+    setTela('aula')
+  }
 
   return (
     <div className="app">
-      <BarraTitulo estado={estado} />
+      <BarraTitulo estado={estado} irParaCalendario={() => setTela('calendario')} />
 
       <nav className="lateral" aria-label="Telas">
-        {TELAS.map(({ id, nome, Icone }) => (
-          <button key={id} className={`nav ${tela === id ? 'nav--ativa' : ''}`} onClick={() => setTela(id)} aria-current={tela === id}>
+        {TELAS.map(({ id, nome, Icone }, i) => (
+          <button
+            key={id}
+            className={`nav ${tela === id ? 'nav--ativa' : ''}`}
+            onClick={() => setTela(id)}
+            aria-current={tela === id}
+            title={`${nome} (Ctrl+${i + 1})`}
+          >
             <Icone />
             {nome}
           </button>
         ))}
-        <StatusBloqueio estado={estado} irParaAjustes={() => setTela('ajustes')} />
+        <div className="lateral__baixo">
+          {estado.ativa && tela !== 'foco' && <SessaoNaLateral estado={estado} voltar={() => setTela('foco')} />}
+          <StatusBloqueio estado={estado} irParaAjustes={() => setTela('ajustes')} />
+        </div>
       </nav>
 
       <main className="conteudo">
         {estado.lembreteAberto && !estado.ativa && <Lembrete estado={estado} />}
-        {tela === 'foco' && <Foco estado={estado} abrirTrava={abrirTrava} />}
+        {tela === 'foco' && <Foco estado={estado} abrirTrava={abrirTrava} abrirAula={abrirAula} />}
+        {tela === 'aula' && <Aula estado={estado} alvo={alvoAula} />}
         {tela === 'plano' && <Plano estado={estado} />}
         {tela === 'calendario' && <Calendario estado={estado} />}
         {tela === 'notas' && <Notas estado={estado} />}
@@ -84,27 +119,63 @@ export function App() {
   )
 }
 
-/** Barra de cima: as próximas avaliações com a contagem regressiva. */
-function BarraTitulo({ estado }: { estado: Estado }) {
-  const proximas = proximasAvaliacoes(estado.eventos, estado.hoje).slice(0, 3)
+/**
+ * Barra de cima: as próximas avaliações com a sigla da matéria e a contagem regressiva.
+ * O nome da matéria sai do título ("Prova 3 de Cálculo" vira "CAL Prova 3"), porque a sigla já diz qual é.
+ */
+function BarraTitulo({ estado, irParaCalendario }: { estado: Estado; irParaCalendario: () => void }) {
+  const proximas = proximasAvaliacoes(estado.eventos, estado.hoje).slice(0, 6)
   return (
     <header className="barra-titulo">
       <span className="barra-titulo__nome">App de Estudos</span>
       <div className="provas">
-        {proximas.map((e) => (
-          <span
-            key={e.id}
-            className={`prova-chip ${diasAte(estado.hoje, e.data) <= 7 ? 'prova-chip--perto' : ''}`}
-            style={estiloMateria(estado.materias, e.materiaId)}
-            title={`${e.titulo}, ${nomeDe(estado.materias, e.materiaId)}`}
-          >
-            <span className="ponto" />
-            {e.titulo}
-            <span className="prova-chip__dias">{textoContagem(estado.hoje, e.data)}</span>
-          </span>
-        ))}
+        {proximas.map((e) => {
+          const materia = estado.materias.find((m) => m.id === e.materiaId)
+          const titulo = materia ? tituloSemMateria(e.titulo, materia.nome) : e.titulo
+          const quando = textoContagem(estado.hoje, e.data)
+          return (
+            <button
+              key={e.id}
+              className={`prova-chip ${diasAte(estado.hoje, e.data) <= 7 ? 'prova-chip--perto' : ''}`}
+              style={estiloMateria(estado.materias, e.materiaId)}
+              title={[
+                `${nomeDe(estado.materias, e.materiaId)}: ${e.titulo}`,
+                `${nomeDiaSemana(e.data)}, ${diaMes(e.data)} (${quando})`,
+                e.pontos ? `vale ${formatarNota(e.pontos)}` : ''
+              ]
+                .filter(Boolean)
+                .join('\n')}
+              onClick={irParaCalendario}
+            >
+              <span className="ponto" />
+              {materia && <span className="prova-chip__sigla">{siglaDe(materia)}</span>}
+              <span className="prova-chip__titulo">{titulo}</span>
+              <span className="prova-chip__dias">{quando}</span>
+            </button>
+          )
+        })}
       </div>
     </header>
+  )
+}
+
+/** Fora da tela Foco, a sessão continua à vista: o tempo, a matéria e um clique para voltar. */
+function SessaoNaLateral({ estado, voltar }: { estado: Estado; voltar: () => void }) {
+  const agora = useAgora(estado)
+  const a = estado.ativa!
+  const materia = estado.materias.find((m) => m.id === a.materiaId)
+  return (
+    <button className="sessao-lateral" onClick={voltar} style={estiloMateria(estado.materias, a.materiaId)} title="Voltar para o timer">
+      <span className="sessao-lateral__estado">
+        <Led aceso cor={a.status === 'estudando' ? 'verde' : 'ambar'} />
+        {a.status === 'estudando' ? 'Estudando' : 'Pausado'}
+      </span>
+      <span className={`sessao-lateral__tempo ${a.status === 'pausado' ? 'sessao-lateral__tempo--pausado' : ''}`}>{formatarRelogio(estudoMs(a, agora))}</span>
+      <span className="sessao-lateral__materia">
+        <span className="ponto" />
+        {materia ? materia.nome : 'Estudo livre'}
+      </span>
+    </button>
   )
 }
 

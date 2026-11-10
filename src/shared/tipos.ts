@@ -10,6 +10,8 @@ export type Materia = {
   semestre: string
   /** Livros básicos, um por linha (vem do plano de ensino). */
   bibliografia: string
+  /** Sigla escrita à mão (ex.: ERS). Vazia, o app monta uma pelo nome (veja `siglaDe`). */
+  sigla: string
 }
 
 export type Tarefa = {
@@ -164,6 +166,112 @@ export type Estado = {
   canvas: EstadoCanvas
   /** Novidades do Canvas (matérias e avaliações novas), esperando a revisão. */
   revisaoCanvas: RevisaoCanvas | null
+  /** Aulas montadas pela IA, só o resumo (a aula inteira vem por `window.api.aula(id)`). */
+  aulas: ResumoAula[]
+}
+
+// ---------- Aula da IA (o professor da sessão) ----------
+
+export type SecaoAula = {
+  titulo: string
+  /** Explicação da parte, em texto simples com quebras de linha. */
+  texto: string
+  /** Fórmulas e regras para decorar, uma por item. */
+  formulas: string[]
+  /** Exemplo resolvido passo a passo (nulo quando a parte é só teoria). */
+  exemplo: { enunciado: string; resolucao: string } | null
+}
+
+export type NivelExercicio = 'facil' | 'medio' | 'dificil'
+
+export type ExercicioAula = {
+  numero: number
+  enunciado: string
+  /** De onde veio (ex.: "slide 23 de g_desempenho_ES.pdf", "parecido com o 3.9 do livro"). */
+  origem: string
+  nivel: NivelExercicio
+  /** Um empurrão sem entregar a resposta. */
+  dica: string
+  resolucao: string
+  resposta: string
+}
+
+export type ConteudoAula = {
+  titulo: string
+  /** O que vai saber fazer no fim da sessão. */
+  objetivo: string
+  /** Ordem de estudo, com o tempo de cada passo. */
+  roteiro: string[]
+  secoes: SecaoAula[]
+  armadilhas: string[]
+  exercicios: ExercicioAula[]
+  /** Arquivos do material que a IA usou de verdade. */
+  fontes: string[]
+  /** Observações da IA sobre o material (ex.: "o PDF não fala de cache"). */
+  avisos: string
+}
+
+export type SituacaoExercicio = 'acertei' | 'parcial' | 'errei'
+
+export type MensagemAula = {
+  de: 'aluno' | 'professor'
+  texto: string
+  quando: number
+  /** Fotos da resolução mandadas junto (nomes na pasta da aula). */
+  fotos: string[]
+  /** Exercício a que a mensagem se refere. */
+  exercicio: number | null
+}
+
+export type Aula = {
+  id: number
+  tarefaId: number | null
+  materiaId: number | null
+  tema: string
+  criadaEm: number
+  atualizadaEm: number
+  conteudo: ConteudoAula
+  /** Situação de cada exercício, pelo número ("3": "errei"). */
+  progresso: Record<string, SituacaoExercicio>
+  conversa: MensagemAula[]
+  /** Nomes dos arquivos do material, na pasta da aula. */
+  materiais: string[]
+}
+
+export type ResumoAula = {
+  id: number
+  tarefaId: number | null
+  materiaId: number | null
+  tema: string
+  titulo: string
+  criadaEm: number
+  atualizadaEm: number
+  exercicios: number
+  certos: number
+  feitos: number
+  /** Exercícios marcados como errados ou parciais (para o check-in e o replanejamento). */
+  paraRever: string[]
+}
+
+export type PedidoAula = {
+  tarefaId: number | null
+  materiaId: number | null
+  tema: string
+  /** PDFs do Canvas (o app baixa antes de chamar a IA). */
+  arquivosCanvas: number[]
+  /** PDFs ou fotos do PC (ou já baixados do Canvas pela lista completa). */
+  arquivosPc: string[]
+  /** Pedido livre do aluno (ex.: "explique mais devagar a parte de cache"). */
+  pedido: string
+}
+
+export type PerguntaAula = {
+  aulaId: number
+  texto: string
+  /** Caminhos das fotos da resolução no PC. */
+  fotos: string[]
+  /** Quando é a resposta de um exercício. */
+  exercicio: number | null
 }
 
 // ---------- Canvas (o ambiente virtual da faculdade) ----------
@@ -220,7 +328,15 @@ export type ArquivoCanvas = { id: number; cursoId: number; nome: string; tamanho
 
 // ---------- IA (pelo Claude Code do PC) ----------
 
-export type TipoTrabalhoIa = 'teste' | 'gerar-simulado' | 'corrigir-simulado' | 'ler-plano' | 'replanejar'
+export type TipoTrabalhoIa =
+  | 'teste'
+  | 'gerar-simulado'
+  | 'corrigir-simulado'
+  | 'ler-plano'
+  | 'replanejar'
+  | 'montar-aula'
+  | 'professor'
+  | 'mais-exercicios'
 
 export type TrabalhoIa = {
   tipo: TipoTrabalhoIa
@@ -229,6 +345,8 @@ export type TrabalhoIa = {
   desde: number
   /** Simulado em correção, quando for o caso. */
   simuladoId: number | null
+  /** Aula em que o professor está respondendo ou criando exercícios. */
+  aulaId: number | null
 }
 
 export type EstadoIa = {

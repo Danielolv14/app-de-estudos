@@ -110,6 +110,9 @@ describe('banco e repositório', () => {
     ])
     // v1.2: a matéria antiga ganha o semestre vazio, sem bibliografia, e não fica arquivada.
     expect(repo.materias()[0]).toMatchObject({ nome: 'Física', arquivada: false, semestre: '', bibliografia: '' })
+    // v1.5: sigla vazia (o app monta pelo nome) e a tabela de aulas já existe.
+    expect(repo.materias()[0].sigla).toBe('')
+    expect(repo.aulas()).toEqual([])
     expect(repo.sessoes()[0]).toMatchObject({ id: 3, estudoSeg: 600, checkinFeito: '', checkinTravou: '' })
     const id = repo.salvarEvento({ materiaId: 1, data: null, titulo: 'Reavaliação', tipo: 'reavaliacao', pontos: 30, meta: null, nota: null })
     expect(repo.eventos().find((e) => e.id === id)?.data).toBeNull()

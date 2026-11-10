@@ -1,17 +1,22 @@
 // Acesso aos dados: converte as linhas do SQLite (snake_case) nos tipos do app (camelCase).
 import type { Banco, Linha } from './banco'
 import type {
+  Aula,
   Config,
+  ConteudoAula,
   Correcao,
   EstadoLembrete,
   Evento,
   LeituraPlano,
   Materia,
+  MensagemAula,
   PropostaPlano,
   ProvaSimulado,
+  ResumoAula,
   Sessao,
   SessaoAtiva,
   Simulado,
+  SituacaoExercicio,
   Tarefa,
   TipoEvento,
   TipoTrabalhoIa
@@ -26,7 +31,8 @@ const paraMateria = (l: Linha): Materia => ({
   cor: String(l.cor),
   arquivada: Number(l.arquivada ?? 0) === 1,
   semestre: String(l.semestre ?? ''),
-  bibliografia: String(l.bibliografia ?? '')
+  bibliografia: String(l.bibliografia ?? ''),
+  sigla: String(l.sigla ?? '')
 })
 
 const paraTarefa = (l: Linha): Tarefa => ({
@@ -90,10 +96,32 @@ const paraSimulado = (l: Linha): Simulado => ({
   correcao: json<Correcao | null>(l.correcao, null)
 })
 
+const paraAula = (l: Linha): Aula => ({
+  id: Number(l.id),
+  tarefaId: num(l.tarefa_id),
+  materiaId: num(l.materia_id),
+  tema: String(l.tema),
+  criadaEm: Number(l.criada_em),
+  atualizadaEm: Number(l.atualizada_em),
+  conteudo: json<ConteudoAula>(l.conteudo, {
+    titulo: String(l.titulo),
+    objetivo: '',
+    roteiro: [],
+    secoes: [],
+    armadilhas: [],
+    exercicios: [],
+    fontes: [],
+    avisos: ''
+  }),
+  progresso: json<Record<string, SituacaoExercicio>>(l.progresso, {}),
+  conversa: json<MensagemAula[]>(l.conversa, []),
+  materiais: json<string[]>(l.materiais, [])
+})
+
 export type NovaTarefa = Omit<Tarefa, 'id' | 'feita' | 'ordem'> & { id?: number; feita?: boolean; ordem?: number }
 /** O conteúdo é opcional para quem salva (nem toda tela manda). */
 export type NovoEvento = Omit<Evento, 'id' | 'conteudo'> & { id?: number; conteudo?: string }
-export type NovaMateria = { id?: number; nome: string; cor: string; bibliografia?: string }
+export type NovaMateria = { id?: number; nome: string; cor: string; bibliografia?: string; sigla?: string }
 export type UsoIa = {
   quando: number
   tipo: TipoTrabalhoIa
@@ -121,13 +149,15 @@ export class Repositorio {
     if (m.id) {
       this.banco.executar('UPDATE materias SET nome = ?, cor = ? WHERE id = ?', [m.nome, m.cor, m.id])
       if (m.bibliografia !== undefined) this.banco.executar('UPDATE materias SET bibliografia = ? WHERE id = ?', [m.bibliografia, m.id])
+      if (m.sigla !== undefined) this.banco.executar('UPDATE materias SET sigla = ? WHERE id = ?', [m.sigla.trim().toUpperCase().slice(0, 6), m.id])
       return m.id
     }
-    return this.banco.executar('INSERT INTO materias (nome, cor, semestre, bibliografia) VALUES (?, ?, ?, ?)', [
+    return this.banco.executar('INSERT INTO materias (nome, cor, semestre, bibliografia, sigla) VALUES (?, ?, ?, ?, ?)', [
       m.nome,
       m.cor,
       this.semestre(),
-      m.bibliografia ?? ''
+      m.bibliografia ?? '',
+      (m.sigla ?? '').trim().toUpperCase().slice(0, 6)
     ])
   }
 
@@ -267,6 +297,60 @@ export class Repositorio {
 
   removerSimulado(id: number): void {
     this.banco.executar('DELETE FROM simulados WHERE id = ?', [id])
+  }
+
+  // ---------- Aulas da IA ----------
+  aula(id: number): Aula | undefined {
+    const l = this.banco.um('SELECT * FROM aulas WHERE id = ?', [id])
+    return l ? paraAula(l) : undefined
+  }
+
+  /** Só o necessário para as listas (o conteúdo inteiro de cada aula é grande e vai para a tela só quando ela abre). */
+  aulas(): ResumoAula[] {
+    return this.banco
+      .todos('SELECT id, tarefa_id, materia_id, tema, titulo, criada_em, atualizada_em, conteudo, progresso FROM aulas ORDER BY criada_em DESC, id DESC')
+      .map((l) => {
+        const a = paraAula(l)
+        const situacoes = Object.entries(a.progresso)
+        return {
+          id: a.id,
+          tarefaId: a.tarefaId,
+          materiaId: a.materiaId,
+          tema: a.tema,
+          titulo: String(l.titulo),
+          criadaEm: a.criadaEm,
+          atualizadaEm: a.atualizadaEm,
+          exercicios: a.conteudo.exercicios.length,
+          certos: situacoes.filter(([, s]) => s === 'acertei').length,
+          feitos: situacoes.length,
+          paraRever: situacoes
+            .filter(([, s]) => s !== 'acertei')
+            .map(([n]) => a.conteudo.exercicios.find((e) => String(e.numero) === n))
+            .filter((e) => e !== undefined)
+            .map((e) => `exercício ${e.numero} (${(e.origem || e.enunciado).slice(0, 80)})`)
+        }
+      })
+  }
+
+  criarAula(a: Omit<Aula, 'id' | 'atualizadaEm' | 'progresso' | 'conversa'>): number {
+    return this.banco.executar(
+      'INSERT INTO aulas (tarefa_id, materia_id, tema, titulo, criada_em, atualizada_em, conteudo, materiais) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [a.tarefaId, a.materiaId, a.tema, a.conteudo.titulo, a.criadaEm, a.criadaEm, JSON.stringify(a.conteudo), JSON.stringify(a.materiais)]
+    )
+  }
+
+  atualizarAula(id: number, p: Partial<Pick<Aula, 'conteudo' | 'progresso' | 'conversa'>>, quando: number): void {
+    this.banco.transacao(() => {
+      for (const [campo, valor] of Object.entries(p)) {
+        this.banco.executar(`UPDATE aulas SET ${campo} = ? WHERE id = ?`, [JSON.stringify(valor), id])
+        if (campo === 'conteudo') this.banco.executar('UPDATE aulas SET titulo = ? WHERE id = ?', [(valor as ConteudoAula).titulo, id])
+      }
+      this.banco.executar('UPDATE aulas SET atualizada_em = ? WHERE id = ?', [quando, id])
+    })
+  }
+
+  removerAula(id: number): void {
+    this.banco.executar('DELETE FROM aulas WHERE id = ?', [id])
   }
 
   // ---------- Uso da IA ----------

@@ -298,6 +298,11 @@ export class SincroniaCanvas {
     this.o.mudou()
   }
 
+  /** Só para as capturas de tela: uma lista de PDFs sem ir ao Canvas. */
+  guardarArquivos(cursoId: number, lista: ArquivoCanvas[]): void {
+    this.cacheArquivos.set(cursoId, { quando: this.o.agora(), lista })
+  }
+
   /** PDFs do curso (guarda a lista por 10 minutos). */
   async arquivos(cursoId: number): Promise<{ ok: true; arquivos: ArquivoCanvas[] } | { ok: false; mensagem: string }> {
     const cache = this.cacheArquivos.get(cursoId)

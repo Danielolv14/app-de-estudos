@@ -111,7 +111,7 @@ describe('calculadora de nota', () => {
 
   it('a meta que vale é a fixada à mão; sem ela, a calculada', () => {
     const ev = calculo()
-    const auto = metasAutomaticas(ev, [{ id: 1, nome: 'Cálculo', cor: '#fff', arquivada: false, semestre: '2026/2', bibliografia: '' }])
+    const auto = metasAutomaticas(ev, [{ id: 1, nome: 'Cálculo', cor: '#fff', arquivada: false, semestre: '2026/2', bibliografia: '', sigla: '' }])
     expect(metaDe(porTitulo(ev, 'ADA'), auto)).toEqual({ valor: 3, automatica: false })
     expect(metaDe(porTitulo(ev, 'P3'), auto)).toEqual({ valor: 16.3, automatica: true })
     expect(metaDe(porTitulo(ev, 'P1'), auto)).toBeNull() // já tem nota

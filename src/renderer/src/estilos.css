@@ -159,13 +159,47 @@ textarea {
   border-radius: var(--raio-p);
   background: var(--superficie-1);
   white-space: nowrap;
+  font-family: inherit;
   font-size: 12px;
   color: var(--texto-3);
+  flex: none;
+  cursor: pointer;
+  transition: border-color var(--rapido) var(--curva);
+}
+
+.prova-chip:hover {
+  border-color: var(--borda-hover);
+}
+
+.prova-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--anel-foco);
 }
 
 .prova-chip .ponto {
   width: 6px;
   height: 6px;
+}
+
+/* A sigla diz a matéria; a cor do ponto só confirma. */
+.prova-chip__sigla,
+.sigla {
+  font-family: var(--fonte-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--texto);
+}
+
+.prova-chip__titulo {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sigla {
+  margin-right: 8px;
+  color: var(--texto-2);
 }
 
 .prova-chip__dias {
@@ -228,8 +262,68 @@ textarea {
   flex: none;
 }
 
-.lateral__rodape {
+.lateral__baixo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-top: auto;
+}
+
+/* A sessão em andamento, quando o Daniel está em outra tela. Clicar volta para o timer. */
+.sessao-lateral {
+  display: grid;
+  gap: 2px;
+  padding: 11px 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-g);
+  background: var(--superficie-1);
+  color: var(--texto-3);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--rapido) var(--curva);
+}
+
+.sessao-lateral:hover {
+  border-color: var(--borda-forte);
+}
+
+.sessao-lateral:focus-visible {
+  outline: none;
+  box-shadow: var(--anel-foco);
+}
+
+.sessao-lateral__estado {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sessao-lateral__tempo {
+  font-family: var(--fonte-mono);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--texto);
+}
+
+.sessao-lateral__tempo--pausado {
+  color: var(--texto-2);
+}
+
+.sessao-lateral__materia {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--texto-2);
+}
+
+.lateral__rodape {
   padding: 12px;
   border: 1px solid var(--borda) !important;
   border-radius: var(--raio-g);
@@ -3136,6 +3230,456 @@ code {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* ---------- Aula (a IA como professor) ---------- */
+
+.aparelho__aula {
+  margin-left: auto;
+}
+
+/* Sigla da matéria em Ajustes: curta, em maiúsculas. */
+.campo-sigla {
+  width: 78px;
+  flex: none;
+  font-family: var(--fonte-mono);
+  text-transform: uppercase;
+}
+
+.aulas {
+  max-width: 880px;
+}
+
+.aulas .titulo-tela h1 {
+  overflow-wrap: anywhere;
+}
+
+.aulas .titulo-tela p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+}
+
+.aulas > .painel + .painel,
+.aula-parte + .aula-parte,
+.aula-parte + .painel {
+  margin-top: 14px;
+}
+
+.material-aula {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  background: var(--superficie-2);
+  font-size: 13px;
+}
+
+.material-aula > .mudo,
+.material-aula > .erro-ia {
+  margin: 0;
+}
+
+.material-aula__rotulo {
+  color: var(--texto-2);
+}
+
+.material-aula__lista {
+  max-height: 200px;
+}
+
+.material-aula .linha-campo {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Rótulo pequeno dentro das partes (Ordem de estudo, Para decorar, Exemplo). */
+.aula-rotulo {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texto-3);
+}
+
+.aula-intro__objetivo {
+  margin: 0 0 16px;
+  max-width: 72ch;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--texto);
+}
+
+.roteiro {
+  margin: 0 0 14px;
+  padding-left: 22px;
+  color: var(--texto-2);
+  line-height: 1.6;
+}
+
+.roteiro li::marker {
+  font-family: var(--fonte-mono);
+  font-size: 12px;
+  color: var(--texto-3);
+}
+
+.aula-intro__fontes {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--borda);
+  font-size: 12.5px;
+}
+
+.aula-intro {
+  margin-bottom: 14px;
+}
+
+.aula-parte h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+.aula-parte__numero {
+  font-family: var(--fonte-mono);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--texto-3);
+  white-space: nowrap;
+}
+
+.aula-texto p {
+  margin: 0 0 12px;
+  max-width: 74ch;
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.aula-texto p:last-child {
+  margin-bottom: 0;
+}
+
+/* Fórmulas: em fonte mono, uma por linha, com um traço na cor da matéria. */
+.formulas {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--cor-materia, var(--borda-forte));
+  border-radius: 0 var(--raio-m) var(--raio-m) 0;
+  background: var(--superficie-2);
+}
+
+.formulas .aula-rotulo {
+  margin-bottom: 2px;
+}
+
+.formulas code {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.exemplo {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--borda);
+}
+
+.exemplo__enunciado {
+  margin: 0 0 8px;
+  max-width: 74ch;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.exemplo .questao__resolucao {
+  margin-top: 8px;
+}
+
+.exemplo .questao__resolucao p {
+  margin: 0;
+}
+
+.armadilhas {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.6;
+  color: var(--texto-2);
+}
+
+.armadilhas li + li {
+  margin-top: 6px;
+}
+
+.armadilhas li::marker {
+  color: var(--erro);
+}
+
+.aula-exercicios__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 30px 0 12px;
+}
+
+.aula-exercicios__topo h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.nivel {
+  font-size: 12px;
+  color: var(--texto-3);
+  white-space: nowrap;
+}
+
+.nivel--dificil {
+  color: var(--texto-2);
+}
+
+.exercicio__dica {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  font-size: 13.5px;
+  color: var(--texto-2);
+}
+
+.exercicio__dica svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--destaque);
+}
+
+.exercicio__dica p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.exercicio__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borda);
+}
+
+.exercicio__acoes .segmentado {
+  margin-left: auto;
+}
+
+/* Controle de três opções (Acertei, Em parte, Errei). A cor só aparece na opção escolhida. */
+.segmentado {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  background: var(--fundo);
+}
+
+.segmentado__opcao {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--raio-p);
+  background: none;
+  color: var(--texto-3);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition:
+    background var(--rapido) var(--curva),
+    color var(--rapido) var(--curva);
+}
+
+.segmentado__opcao:hover {
+  color: var(--texto);
+}
+
+.segmentado__opcao:focus-visible {
+  outline: none;
+  box-shadow: var(--anel-foco);
+}
+
+.segmentado__opcao--acertei,
+.segmentado__opcao--parcial,
+.segmentado__opcao--errei {
+  background: var(--superficie-3);
+  border-color: var(--borda);
+  color: var(--texto);
+}
+
+.segmentado__opcao--acertei {
+  color: var(--sucesso);
+}
+
+.segmentado__opcao--parcial {
+  color: var(--destaque);
+}
+
+.segmentado__opcao--errei {
+  color: var(--erro);
+}
+
+/* Conversa com o professor. */
+.professor {
+  margin-top: 30px;
+  scroll-margin-top: 20px;
+}
+
+.professor__dica {
+  margin: 0 0 14px;
+  max-width: 72ch;
+  font-size: 13.5px;
+}
+
+.conversa {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 560px;
+  margin: 0 0 14px;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.msg {
+  max-width: 86%;
+  padding: 10px 14px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-g);
+}
+
+.msg p {
+  margin: 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.msg p + p {
+  margin-top: 6px;
+}
+
+.msg__quem {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11.5px;
+  color: var(--texto-3);
+}
+
+.msg--aluno {
+  align-self: flex-end;
+  background: var(--superficie-3);
+}
+
+.msg--professor {
+  align-self: flex-start;
+  background: var(--superficie-2);
+}
+
+.msg--pensando p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--fonte-mono);
+  font-size: 13px;
+  color: var(--texto-2);
+}
+
+.conversa__fim {
+  height: 1px;
+  margin-top: -10px;
+}
+
+.msg__fotos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.miniatura {
+  margin: 0;
+  width: 120px;
+  height: 90px;
+  overflow: hidden;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  background: var(--fundo);
+}
+
+.miniatura img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.miniatura .mudo {
+  display: block;
+  padding: 6px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.compositor {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-g);
+  background: var(--superficie-2);
+  transition: border-color var(--rapido) var(--curva);
+}
+
+.compositor--arrastando {
+  border-color: var(--destaque-borda);
+}
+
+.compositor .campo-area {
+  min-height: 72px;
+  border-color: transparent;
+  background: var(--superficie-1);
+}
+
+.compositor__linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.compositor__linha .ficha-arquivo {
+  height: 28px;
+}
+
+.compositor__espaco {
+  flex: 1;
+}
+
+.professor > .erro-ia {
+  margin-top: 10px;
 }
 
 /* ---------- Janela estreita (perto do mínimo de 1000px) ---------- */

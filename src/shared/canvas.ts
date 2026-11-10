@@ -1,7 +1,7 @@
 // Compara o que veio do Canvas com o que está no app. Sem rede e sem banco: só dados, para dar para testar.
 // Regra: o que já está ligado ao Canvas é atualizado sozinho (data, pontos e nota são do Canvas);
 // o que é novo vai para uma revisão, onde o Daniel escolhe o que entra e junta com o que já existia.
-import type { CursoCanvas, CursoNaRevisao, Evento, ItemCanvas, ItemNaRevisao, Materia, TipoItemCanvas } from './tipos'
+import type { ArquivoCanvas, CursoCanvas, CursoNaRevisao, Evento, ItemCanvas, ItemNaRevisao, Materia, TipoItemCanvas } from './tipos'
 
 /** Ligações Canvas → app: "curso:12" → id da matéria, "tarefa:34" ou "evento:56" → id do evento. 0 = ignorado de propósito. */
 export type Vinculos = Record<string, number>
@@ -178,4 +178,54 @@ export function descreverMudancas(mudancas: MudancaCanvas[], diaMes: (d: string)
   if (partes.length === 0) return ''
   const texto = partes.slice(0, 3).join('; ') + (partes.length > 3 ? ` e mais ${partes.length - 3}` : '')
   return `Canvas: ${texto}.`
+}
+
+// ---------- PDFs do curso que combinam com o tema da sessão ----------
+
+const VAZIAS = new Set(
+  (
+    'de da do das dos e em a o os as um uma uns umas para pra com por no na nos nas ao aos que se mais sobre entre ' +
+    'pdf aula aulas slide slides lista listas exercicio exercicios questao questoes revisar revisao refazer estudar fazer ' +
+    'parte partes unidade unid cap capitulo material impares pares ver todos todas resolver'
+  ).split(' ')
+)
+
+/** Palavras (pelo começo, para "derivada" bater com "derivadas") e números de seção ("3.9", "14") de um texto. */
+function termos(texto: string): { palavras: Set<string>; numeros: Set<string> } {
+  const palavras = new Set(
+    normalizar(texto)
+      .split(' ')
+      .filter((p) => p.length >= 4 && !/^\d+$/.test(p) && !VAZIAS.has(p))
+      .map((p) => p.slice(0, 6))
+  )
+  // Números dentro de parênteses são exercícios ("3.9 (1, 3, 5)"), não o assunto.
+  const numeros = new Set(texto.replace(/\([^)]*\)/g, ' ').match(/\d+(?:\.\d+)*/g) ?? [])
+  return { palavras, numeros }
+}
+
+/**
+ * Os PDFs do curso que parecem ser do tema (pelo nome do arquivo e do módulo), do mais parecido ao menos.
+ * Palavra no nome vale 3, no módulo 2; número de seção ("3.9") vale 4 e número solto ("aula 14"), 1.
+ * Só entra quem faz 3 pontos ou mais: sem nada parecido, a lista volta vazia e o Daniel escolhe à mão.
+ */
+export function sugerirPdfs(arquivos: ArquivoCanvas[], tema: string, max = 4): ArquivoCanvas[] {
+  const t = termos(tema)
+  if (t.palavras.size === 0 && t.numeros.size === 0) return []
+  const pontuar = (a: ArquivoCanvas): number => {
+    const nome = termos(a.nome)
+    const modulo = termos(a.modulo)
+    let pontos = 0
+    for (const p of t.palavras) pontos += nome.palavras.has(p) ? 3 : modulo.palavras.has(p) ? 2 : 0
+    for (const n of t.numeros) {
+      const achou = nome.numeros.has(n) || modulo.numeros.has(n)
+      if (achou) pontos += n.includes('.') ? 4 : 1
+    }
+    return pontos
+  }
+  return arquivos
+    .map((a, i) => ({ a, i, p: pontuar(a) }))
+    .filter((x) => x.p >= 3)
+    .sort((x, y) => y.p - x.p || x.i - y.i)
+    .slice(0, max)
+    .map((x) => x.a)
 }

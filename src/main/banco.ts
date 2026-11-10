@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS materias (
   cor TEXT NOT NULL,
   arquivada INTEGER NOT NULL DEFAULT 0,
   semestre TEXT NOT NULL DEFAULT '',
-  bibliografia TEXT NOT NULL DEFAULT ''
+  bibliografia TEXT NOT NULL DEFAULT '',
+  sigla TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS tarefas (
   id INTEGER PRIMARY KEY,
@@ -79,6 +80,19 @@ CREATE TABLE IF NOT EXISTS ia_usos (
   ok INTEGER NOT NULL,
   erro TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS aulas (
+  id INTEGER PRIMARY KEY,
+  tarefa_id INTEGER REFERENCES tarefas(id) ON DELETE SET NULL,
+  materia_id INTEGER REFERENCES materias(id) ON DELETE SET NULL,
+  tema TEXT NOT NULL,
+  titulo TEXT NOT NULL,
+  criada_em INTEGER NOT NULL,
+  atualizada_em INTEGER NOT NULL,
+  conteudo TEXT NOT NULL,
+  progresso TEXT NOT NULL DEFAULT '{}',
+  conversa TEXT NOT NULL DEFAULT '[]',
+  materiais TEXT NOT NULL DEFAULT '[]'
+);
 CREATE TABLE IF NOT EXISTS kv (
   chave TEXT PRIMARY KEY,
   valor TEXT NOT NULL
@@ -112,7 +126,7 @@ export class Banco {
 
   /**
    * Bancos de versões anteriores: a data do evento passa a poder ficar vazia (v1.1), as sessões ganham o check-in (v1.1),
-   * os eventos ganham o conteúdo e as matérias, o semestre e a bibliografia (v1.2).
+   * os eventos ganham o conteúdo e as matérias, o semestre e a bibliografia (v1.2), e a sigla (v1.5).
    */
   private atualizarEsquema(): boolean {
     let mudou = false
@@ -142,7 +156,8 @@ export class Banco {
       ['eventos', 'conteudo', "TEXT NOT NULL DEFAULT ''"],
       ['materias', 'arquivada', 'INTEGER NOT NULL DEFAULT 0'],
       ['materias', 'semestre', "TEXT NOT NULL DEFAULT ''"],
-      ['materias', 'bibliografia', "TEXT NOT NULL DEFAULT ''"]
+      ['materias', 'bibliografia', "TEXT NOT NULL DEFAULT ''"],
+      ['materias', 'sigla', "TEXT NOT NULL DEFAULT ''"]
     ]
     for (const [tabela, coluna, tipo] of novas) {
       if (!this.colunas(tabela).some((c) => c.nome === coluna)) {
