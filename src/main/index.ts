@@ -1,14 +1,18 @@
 // Processo principal do App de Estudos: janelas, bandeja, mini-timer e ligação entre as partes.
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, screen, Tray } from 'electron'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, safeStorage, screen, Tray } from 'electron'
+import { copyFileSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
-import type { Config, Estado, PedidoEncerrar, StatusBloqueio } from '@shared/tipos'
+import { basename, dirname, extname, join } from 'node:path'
+import type { Config, Estado, LeituraPlano, PedidoEncerrar, PedidoSimulado, RevisaoCanvas, StatusBloqueio } from '@shared/tipos'
 import { dataLocal, estudoMs, formatarDuracao } from '@shared/regras'
 import { gerarResumo } from '@shared/resumo'
 import { Banco } from './banco'
-import { Repositorio, type NovaTarefa, type NovoEvento } from './repositorio'
+import { Repositorio, type NovaMateria, type NovaTarefa, type NovoEvento } from './repositorio'
+import { Assistente, FOTOS_ACEITAS, MODELOS_ACEITOS } from './assistente'
+import { aplicarLeitura, aplicarProposta } from './planejamento'
 import { prepararDados } from './seed'
+import { dadosFalsosDeCanvas, dadosFalsosDeIa } from './captura'
+import { revisaoCanvas, SincroniaCanvas } from './sincronia-canvas'
 import { GerenciadorSessao } from './sessao'
 import { ControleBloqueio, desinstalarServico, instalarServico, nomeAmigavel, statusBloqueio } from './bloqueio'
 import { Lembretes } from './lembrete'
@@ -36,6 +40,8 @@ const pastaScripts = () => (app.isPackaged ? join(process.resourcesPath, 'servic
 let repo: Repositorio
 let sessao: GerenciadorSessao
 let lembretes: Lembretes
+let assistente: Assistente
+let canvas: SincroniaCanvas
 let bloqueio: ControleBloqueio
 let principal: BrowserWindow | null = null
 let mini: BrowserWindow | null = null
@@ -46,6 +52,7 @@ let proximoAviso = 1
 let metaAvisada: string | null = null
 let ultimoStatus = ''
 let ultimoDia = ''
+let ultimoAvisoIa = 0
 
 const STATUS_TESTE: StatusBloqueio = { instalado: true, vivo: true, bloqueado: true, erro: null, desatualizado: false }
 
@@ -64,7 +71,14 @@ function estado(): Estado {
     config: repo.config(),
     bloqueio: modoTeste ? { ...STATUS_TESTE, bloqueado: !!repo.sessaoAtiva() } : statusBloqueio(),
     lembreteAberto: lembretes.aberto,
-    avisos
+    avisos,
+    simulados: repo.simulados(),
+    ia: assistente.estado(),
+    semestre: repo.semestre(),
+    leituraPlano: repo.leituraPlano(),
+    propostaPlano: repo.propostaPlano(),
+    canvas: canvas.estado(),
+    revisaoCanvas: revisaoCanvas(repo)
   }
 }
 
@@ -117,7 +131,8 @@ function escreverResumo(): void {
         eventos: repo.eventos(),
         sessoes: repo.sessoes(),
         metasDia: repo.metasDia(),
-        ativa: repo.sessaoAtiva()
+        ativa: repo.sessaoAtiva(),
+        simulados: repo.simulados()
       }),
       'utf8'
     )
@@ -305,7 +320,14 @@ function registrarIpc(): void {
   h('tarefa:remover', (id: number) => repo.removerTarefa(id))
   h('evento:salvar', (e: NovoEvento) => repo.salvarEvento(e))
   h('evento:remover', (id: number) => repo.removerEvento(id))
-  h('materia:salvar', (m: { id?: number; nome: string; cor: string }) => repo.salvarMateria(m))
+  h('materia:salvar', (m: NovaMateria) => repo.salvarMateria(m))
+  h('materia:arquivar', (id: number, arquivada: boolean) => repo.arquivarMateria(id, arquivada))
+  h('semestre:virar', (novo: string, apagarPendentes: boolean) => {
+    if (repo.sessaoAtiva()) return { arquivadas: 0, apagadas: 0 }
+    const r = repo.virarSemestre(novo.trim() || repo.semestre(), apagarPendentes)
+    avisar(`Semestre ${repo.semestre()} começou. ${r.arquivadas} ${r.arquivadas === 1 ? 'matéria arquivada' : 'matérias arquivadas'}.`)
+    return r
+  })
   h('materia:remover', (id: number) => repo.removerMateria(id))
   h('meta:definir', (data: string, minutos: number | null) => repo.definirMeta(data, minutos))
   h('config:salvar', (c: Config) => salvarConfig(c))
@@ -339,6 +361,115 @@ function registrarIpc(): void {
     return r.filePath
   })
   h('janela:principal', () => mostrarPrincipal())
+
+  // ---------- IA (pelo Claude Code) ----------
+  h('ia:testar', () => assistente.testar())
+  h('ia:cancelar', () => assistente.cancelar())
+  h('ia:limpar', () => assistente.limparUltimo())
+  h('ia:escolherClaude', async () => {
+    const r = await dialog.showOpenDialog(principal!, {
+      title: 'Onde está o claude.exe',
+      properties: ['openFile'],
+      filters: [{ name: 'Claude Code', extensions: ['exe'] }]
+    })
+    if (r.canceled || !r.filePaths[0]) return null
+    salvarConfig({ ...repo.config(), caminhoClaude: r.filePaths[0] })
+    return r.filePaths[0]
+  })
+
+  // ---------- Simulados ----------
+  const escolherArquivos = async (titulo: string, extensoes: string[], varios: boolean): Promise<string[]> => {
+    const r = await dialog.showOpenDialog(principal!, {
+      title: titulo,
+      properties: varios ? ['openFile', 'multiSelections'] : ['openFile'],
+      filters: [{ name: 'Arquivos', extensions: extensoes.map((e) => e.slice(1)) }]
+    })
+    return r.canceled ? [] : r.filePaths
+  }
+  h('simulado:escolherModelo', async () => (await escolherArquivos('Prova antiga para servir de modelo', MODELOS_ACEITOS, false))[0] ?? null)
+  h('simulado:gerar', (p: PedidoSimulado) => assistente.gerarSimulado(p))
+  h('simulado:iniciar', (id: number) => {
+    const s = repo.simulado(id)
+    if (!s || s.iniciadoEm) return
+    // A prova conta como sessão de estudo (e o bloqueio liga). Usa a tarefa de hoje da matéria, se tiver.
+    let a = repo.sessaoAtiva()
+    if (!a) {
+      const hoje = dataLocal(agora())
+      const deHoje = repo.tarefas().filter((t) => t.data === hoje && !t.feita && t.materiaId === s.materiaId)
+      const tarefa = deHoje.find((t) => /simulado/i.test(t.titulo)) ?? deHoje[0]
+      a = sessao.iniciar(tarefa?.id ?? null, s.materiaId)
+    }
+    repo.atualizarSimulado(id, { iniciadoEm: agora(), sessaoId: a.sessaoId })
+  })
+  h('simulado:terminar', (id: number) => {
+    const s = repo.simulado(id)
+    if (s?.iniciadoEm && !s.terminadoEm) repo.atualizarSimulado(id, { terminadoEm: agora() })
+  })
+  h('simulado:remover', (id: number) => {
+    if (assistente.estado().trabalho?.simuladoId === id) return
+    assistente.removerSimulado(id)
+  })
+  h('simulado:adicionarFotos', (id: number, arquivos: string[]) => assistente.adicionarFotos(id, arquivos))
+  h('simulado:escolherFotos', async (id: number) => {
+    const arquivos = await escolherArquivos('Fotos da resolução', FOTOS_ACEITAS, true)
+    return arquivos.length > 0 ? assistente.adicionarFotos(id, arquivos) : null
+  })
+  h('simulado:removerFoto', (id: number, foto: string) => assistente.removerFoto(id, foto))
+  h('simulado:corrigir', (id: number) => assistente.corrigirSimulado(id))
+  // Miniatura da foto para a tela (a CSP só aceita imagens do próprio app ou data:).
+  ipcMain.handle('simulado:miniatura', (_e, id: number, foto: string) => {
+    const img = nativeImage.createFromPath(join(assistente.pastaSimulado(id), basename(foto)))
+    if (img.isEmpty()) return null
+    return img.resize({ width: 320, quality: 'good' }).toDataURL()
+  })
+
+  // ---------- Plano de ensino e replanejamento ----------
+  h('plano:escolherPdf', async () => (await escolherArquivos('PDF do plano de ensino', ['.pdf'], false))[0] ?? null)
+  h('plano:ler', (arquivo: string, materiaId: number | null) => assistente.lerPlanoEnsino(arquivo, materiaId))
+  h('plano:aplicarLeitura', (l: LeituraPlano) => {
+    const r = aplicarLeitura(repo, l)
+    avisar(`Plano de ensino aplicado: ${r.avaliacoes} avaliações e ${r.aulas} aulas no calendário.`)
+    return r
+  })
+  h('plano:descartarLeitura', () => repo.salvarLeituraPlano(null))
+  h('plano:replanejar', () => assistente.replanejar())
+  h('plano:aplicarProposta', (ids: number[]) => {
+    const n = aplicarProposta(repo, ids)
+    avisar(n === 0 ? 'Nenhuma mudança aplicada.' : `${n} ${n === 1 ? 'mudança aplicada' : 'mudanças aplicadas'} no plano.`)
+    return n
+  })
+  h('plano:descartarProposta', () => repo.salvarPropostaPlano(null))
+
+  // ---------- Canvas ----------
+  h('canvas:conectar', (url: string, token: string) => canvas.conectar(url, token))
+  h('canvas:desconectar', () => canvas.desconectar())
+  h('canvas:sincronizar', () => canvas.sincronizar(true))
+  h('canvas:ligarCurso', (cursoId: number, destino: number | null) => canvas.ligarCurso(cursoId, destino))
+  h('canvas:aplicarRevisao', (r: RevisaoCanvas) => canvas.aplicarRevisao(r))
+  h('canvas:ignorarRevisao', () => canvas.ignorarRevisao())
+  ipcMain.handle('canvas:arquivos', (_e, cursoId: number) => canvas.arquivos(cursoId))
+  ipcMain.handle('canvas:baixar', (_e, arquivoId: number) => canvas.baixar(arquivoId))
+}
+
+/** Foto grande demais para a IA (o limite é 5 MB por imagem): diminui para 2000 px e grava em JPG. */
+function copiarImagem(de: string, para: string): string {
+  if (statSync(de).size <= 4.5 * 1024 * 1024) {
+    copyFileSync(de, para)
+    return para
+  }
+  const img = nativeImage.createFromPath(de)
+  if (img.isEmpty()) {
+    copyFileSync(de, para)
+    return para
+  }
+  const { width, height } = img.getSize()
+  const menor =
+    width >= height
+      ? img.resize({ width: Math.min(2000, width), quality: 'good' })
+      : img.resize({ height: Math.min(2000, height), quality: 'good' })
+  const destino = join(dirname(para), `${basename(para, extname(para))}.jpg`)
+  writeFileSync(destino, menor.toJPEG(85))
+  return destino
 }
 
 // ---------- Rotinas periódicas ----------
@@ -372,6 +503,14 @@ function iniciarRotinas(): void {
     atualizarBandeja()
   }, 15_000)
   setInterval(escreverResumo, 10 * 60_000)
+  // Canvas: uma vez logo depois de abrir e depois a cada 6 horas (só se estiver conectado).
+  if (!modoTeste) {
+    const sincronizarCanvas = () => {
+      if (canvas.estado().conectado) void canvas.sincronizar(false)
+    }
+    setTimeout(sincronizarCanvas, 20_000)
+    setInterval(sincronizarCanvas, 6 * 60 * 60_000)
+  }
 }
 
 // ---------- Capturas de tela (teste da interface) ----------
@@ -394,15 +533,40 @@ async function capturar(pasta: string): Promise<void> {
     mudou()
     await esperar(800)
   }
-  for (const tela of ['foco', 'plano', 'calendario', 'notas', 'ajustes']) {
+  if (tem('captura-ia')) {
+    dadosFalsosDeIa(repo, agora())
+    dadosFalsosDeCanvas(repo)
+    mudou()
+    await esperar(400)
+  }
+  const js = (codigo: string) => w.webContents.executeJavaScript(codigo)
+  for (const tela of ['foco', 'plano', 'calendario', 'notas', 'simulado', 'constancia', 'ajustes']) {
     w.webContents.send('navegar', tela)
     await esperar(900)
     writeFileSync(join(pasta, `${tela}.png`), await foto(w.webContents))
+    // O simulado corrigido, aberto, de cima a baixo.
+    if (tela === 'simulado' && tem('captura-ia')) {
+      await js("[...document.querySelectorAll('.lista-simulados button')].pop()?.click()")
+      await esperar(700)
+      for (const [i, onde] of ['0', '0.5', '1'].entries()) {
+        await js(`(() => { const c = document.querySelector('.conteudo'); c.scrollTop = (c.scrollHeight - c.clientHeight) * ${onde} })()`)
+        await esperar(400)
+        writeFileSync(join(pasta, `simulado-detalhe-${i + 1}.png`), await foto(w.webContents))
+      }
+      await js("document.querySelector('.voltar')?.click()")
+      await esperar(300)
+    }
+    if (tela === 'plano' || tela === 'calendario') {
+      await js("document.querySelector('.conteudo').scrollTop = 0")
+    }
   }
-  // Parte de baixo dos Ajustes.
-  await w.webContents.executeJavaScript("document.querySelector('.conteudo').scrollTop = 99999")
+  // Meio (IA e semana padrão) e parte de baixo dos Ajustes.
+  await js("(() => { const c = document.querySelector('.conteudo'); c.scrollTop = (c.scrollHeight - c.clientHeight) * 0.5 })()")
   await esperar(400)
   writeFileSync(join(pasta, 'ajustes-2.png'), await foto(w.webContents))
+  await js("document.querySelector('.conteudo').scrollTop = 99999")
+  await esperar(400)
+  writeFileSync(join(pasta, 'ajustes-3.png'), await foto(w.webContents))
   if (tem('captura-trava')) {
     w.webContents.send('navegar', 'foco')
     w.webContents.send('abrir-trava')
@@ -432,8 +596,9 @@ app.on('before-quit', () => {
 app.whenReady().then(async () => {
   const banco = await Banco.abrir(join(app.getPath('userData'), 'estudos.sqlite'), require.resolve('sql.js/dist/sql-wasm.wasm'))
   repo = new Repositorio(banco)
-  prepararDados(repo)
+  // Antes dos dados: a atualização de dados também grava a configuração, e aí a primeira vez não seria mais detectada.
   configurarPrimeiraVez()
+  prepararDados(repo)
 
   // Steam e outros abrem vários processos de uma vez: avisa uma vez por app a cada minuto.
   const ultimosFechados = new Map<string, number>()
@@ -459,6 +624,32 @@ app.whenReady().then(async () => {
     mudou
   })
   lembretes = new Lembretes(repo, recurso('icone.png'), mostrarPrincipal, mudou, !modoTeste)
+  assistente = new Assistente(repo, {
+    pastaDados: app.getPath('userData'),
+    agora,
+    mudou: () => {
+      mudou()
+      // O fim de uma tarefa de IA também avisa fora do app: ela demora alguns minutos.
+      const u = assistente?.estado().ultimo
+      if (u && u.quando !== ultimoAvisoIa) {
+        ultimoAvisoIa = u.quando
+        avisar(u.mensagem, true)
+      }
+    },
+    copiarImagem
+  })
+  canvas = new SincroniaCanvas(repo, {
+    agora,
+    mudou,
+    avisar,
+    // O token fica criptografado com a conta do Windows (DPAPI): outro usuário ou outro PC não abre.
+    cifrar: (texto) => {
+      if (!safeStorage.isEncryptionAvailable()) throw new Error('O Windows não deixou guardar o token com segurança.')
+      return safeStorage.encryptString(texto).toString('base64')
+    },
+    decifrar: (cifrado) => safeStorage.decryptString(Buffer.from(cifrado, 'base64')),
+    pastaArquivos: join(app.getPath('userData'), 'canvas')
+  })
 
   registrarIpc()
   criarPrincipal(!tem('oculto') || !!pastaCaptura)

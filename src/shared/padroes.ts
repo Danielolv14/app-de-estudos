@@ -3,6 +3,9 @@ import type { Config } from './tipos'
 /** Cores disponíveis para as matérias (contraste conferido sobre o grafite do app). */
 export const CORES_MATERIA = ['#7FA8FF', '#5FD3A2', '#F2C14E', '#E98AC8', '#FF8F70', '#A9B6C8']
 
+/** O Canvas da PUC Minas. O endereço canvas.pucminas.br fica atrás de uma checagem anti-robô; a API responde neste. */
+export const CANVAS_PADRAO = 'https://pucminas.instructure.com'
+
 export const CONFIG_PADRAO: Config = {
   dominios: [
     'instagram.com',
@@ -45,5 +48,12 @@ export const CONFIG_PADRAO: Config = {
   insistirMin: 15,
   caminhoResumoVault: '',
   miniTimer: true,
-  iniciarComWindows: true
+  iniciarComWindows: true,
+  modeloIa: 'opus',
+  caminhoClaude: '',
+  semanaPadrao: [],
+  canvasUrl: CANVAS_PADRAO
 }
+
+/** Semestre usado quando o banco ainda não tem um (o plano inicial é de 2026/2). */
+export const SEMESTRE_PADRAO = '2026/2'

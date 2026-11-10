@@ -2,21 +2,34 @@ import { useEffect, useState } from 'react'
 import type { Estado } from '@shared/tipos'
 import { diasAte, proximasAvaliacoes, textoContagem } from '@shared/regras'
 import { estiloMateria, Led, nomeDe } from './componentes/Basicos'
-import { IconeAjustes, IconeCalendario, IconeFechar, IconeFoco, IconeNotas, IconePlano } from './componentes/Icones'
-import { useEstado } from './usarEstado'
+import {
+  IconeAjustes,
+  IconeCalendario,
+  IconeConstancia,
+  IconeFechar,
+  IconeFoco,
+  IconeNotas,
+  IconePlano,
+  IconeSimulado
+} from './componentes/Icones'
+import { useAgora, useEstado } from './usarEstado'
 import { Foco } from './telas/Foco'
 import { Plano } from './telas/Plano'
 import { Calendario } from './telas/Calendario'
 import { Notas } from './telas/Notas'
 import { Ajustes } from './telas/Ajustes'
+import { Simulado } from './telas/Simulado'
+import { Constancia } from './telas/Constancia'
 
-type Tela = 'foco' | 'plano' | 'calendario' | 'notas' | 'ajustes'
+type Tela = 'foco' | 'plano' | 'calendario' | 'notas' | 'simulado' | 'constancia' | 'ajustes'
 
 const TELAS: { id: Tela; nome: string; Icone: typeof IconeFoco }[] = [
   { id: 'foco', nome: 'Foco', Icone: IconeFoco },
   { id: 'plano', nome: 'Plano', Icone: IconePlano },
   { id: 'calendario', nome: 'Calendário', Icone: IconeCalendario },
   { id: 'notas', nome: 'Notas', Icone: IconeNotas },
+  { id: 'simulado', nome: 'Simulado', Icone: IconeSimulado },
+  { id: 'constancia', nome: 'Constância', Icone: IconeConstancia },
   { id: 'ajustes', nome: 'Ajustes', Icone: IconeAjustes }
 ]
 
@@ -50,8 +63,12 @@ export function App() {
         {tela === 'plano' && <Plano estado={estado} />}
         {tela === 'calendario' && <Calendario estado={estado} />}
         {tela === 'notas' && <Notas estado={estado} />}
+        {tela === 'simulado' && <Simulado estado={estado} />}
+        {tela === 'constancia' && <Constancia estado={estado} />}
         {tela === 'ajustes' && <Ajustes estado={estado} />}
       </main>
+
+      {estado.ia.trabalho && <TrabalhoIa estado={estado} />}
 
       <div className="avisos" aria-live="polite">
         {estado.avisos.map((a) => (
@@ -88,6 +105,25 @@ function BarraTitulo({ estado }: { estado: Estado }) {
         ))}
       </div>
     </header>
+  )
+}
+
+/** Enquanto a IA trabalha (leva minutos), um aviso fixo com o tempo e o botão de cancelar. */
+function TrabalhoIa({ estado }: { estado: Estado }) {
+  const agora = useAgora(estado)
+  const t = estado.ia.trabalho!
+  const seg = Math.max(0, Math.floor((agora - t.desde) / 1000))
+  return (
+    <div className="trabalho-ia" role="status">
+      <Led aceso cor="ambar" />
+      <span>{t.descricao}</span>
+      <span className="trabalho-ia__tempo">
+        {Math.floor(seg / 60)}:{String(seg % 60).padStart(2, '0')}
+      </span>
+      <button className="botao-texto" onClick={() => void window.api.cancelarIa()}>
+        Cancelar
+      </button>
+    </div>
   )
 }
 

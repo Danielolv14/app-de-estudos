@@ -16,7 +16,7 @@ Decidida no grill-me de 2026-11-08. App de desktop para o PC pessoal (Windows) q
 | Pausa | Continua bloqueado. O tempo pausado não conta como estudo e aparece no histórico ("2h10 estudando, 15 min de pausa"). |
 | Meta do dia | Vem do plano: cada dia tem as tarefas e uma estimativa de horas, que dá para ajustar. Em dia de folga a meta é zero. |
 | Trava | Forte: só libera quando a meta do dia for batida. Para sair antes, é preciso digitar uma frase longa (ex.: com os dias que faltam para a próxima prova). |
-| IA | API da Anthropic (chave guardada com o `safeStorage` do Electron). Recebe o **PDF do plano de ensino** e devolve as provas e datas para o calendário mais um plano diário com tarefas para marcar, encaixado na semana padrão. Se um dia furar, ela replaneja. |
+| IA | **Claude Code do PC** (`claude -p`), com a assinatura do Daniel, sem chave de API (mudou em 2026-11-08: antes era a API da Anthropic). Roda em modo restrito, só lendo os arquivos da pasta da tarefa. Recebe o **PDF do plano de ensino** e devolve as provas, as datas e as aulas para o calendário. O replanejamento encaixa o plano diário na semana padrão. Tudo passa por revisão antes de entrar. |
 | Lembrete | Horário fixo por dia da semana (ex.: ter, qua e qui às 14h). Uma notificação mostra a tarefa do dia e se repete a cada 15 min até o timer começar ou o lembrete ser adiado. |
 | Obsidian | O app é o dono dos dados e regenera sozinho uma nota de resumo no vault (plano, provas, horas por matéria), para o Claude Code continuar enxergando tudo. |
 | Visual | Escuro, com profundidade e sombras de verdade (nada chapado). Timer grande no centro, uma cor por matéria e a contagem regressiva das provas no topo. Mais um mini-timer flutuante, sempre por cima das outras janelas. |
@@ -40,11 +40,12 @@ Em 2026-11-08 a ordem mudou para seguir o calendário das provas: o plano do sem
 
 1. **v1, o núcleo (pronta em 2026-11-08):** o app com bandeja e mini-timer; timer, pausa, meta e trava; o serviço de bloqueio (hosts, apps do PC e reinício do Chrome); o calendário com a contagem regressiva; o plano atual de Cálculo e Arquitetura importado da nota "Rotina de estudos"; o lembrete; o resumo no vault.
 2. **v1.1 (até 15/11, sem IA):** calculadora de nota, check-in no fim da sessão e botão para mover uma tarefa atrasada para o próximo dia da matéria.
-3. **v1.2 (até 22/11):** chave da API e simulado com correção por foto, a tempo dos simulados de 25/11 e 02/12.
-4. **v1.3 (depois de 11/12, antes das aulas de 2027/1):** virada de semestre, a IA lendo o PDF (calendário e plano diário), o replanejamento e o painel de constância.
+3. **v1.2 (feita em 2026-11-08, adiantada):** a IA pelo Claude Code e o simulado com correção por foto, a tempo dos simulados de 25/11 e 02/12.
+4. **v1.3 (feita em 2026-11-08, adiantada):** virada de semestre, semana padrão, a IA lendo o PDF do plano de ensino (com revisão antes de aplicar), o replanejamento (com o antes e depois de cada mudança) e o painel de constância.
+5. **v1.4 (feita em 2026-11-08):** conexão com o Canvas da PUC: matérias, atividades, provas e notas com revisão antes de entrar no calendário, e os PDFs dos cursos no plano de ensino e no simulado.
 
 ## Decidido por padrão (não perguntado)
-- Modelo da IA: Claude Opus 5.5 (o mais capaz para conferir conta e ler letra à mão; cada uso custa centavos). Dá para trocar para o Sonnet 5.5 nas configurações.
+- Modelo da IA: Opus (o mais capaz para conferir conta e ler letra à mão). Conta no limite da assinatura do Claude, não em dinheiro. Dá para trocar para o Sonnet em Ajustes.
 - Node: o 18 instalado está fora de suporte. Usar o LTS atual via nvm.
 - O mini-timer e a bandeja ficam sempre ativos. Fechar a janela só minimiza.
 
@@ -54,3 +55,6 @@ Em 2026-11-08 a ordem mudou para seguir o calendário das provas: o plano do sem
 - Uma VPN ou um proxy que resolva os endereços fora do PC passa por cima do hosts.
 - Hoje, as listas de sites e apps podem ser editadas no meio da sessão. A trava delas vem junto com o bloqueio agendado.
 - Quem tem admin no PC consegue desfazer o bloqueio. A trava serve contra o impulso, não contra a decisão de parar.
+- A nota do simulado é uma estimativa: a IA pode errar conta ou ler mal a letra. A tela diz isso e mostra o que ela considerou certo e errado em cada questão.
+- A IA usa o limite da assinatura do Claude. Se ele acabar, o app avisa e a tarefa fica para depois.
+- O Claude Code de linha de comando precisa de login próprio (`claude auth login`), separado do app desktop do Claude.

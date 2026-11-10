@@ -4,6 +4,12 @@ export type Materia = {
   id: number
   nome: string
   cor: string
+  /** Matéria de um semestre que já acabou: some das listas, mas o histórico continua. */
+  arquivada: boolean
+  /** Semestre em que a matéria foi cursada (ex.: 2026/2). */
+  semestre: string
+  /** Livros básicos, um por linha (vem do plano de ensino). */
+  bibliografia: string
 }
 
 export type Tarefa = {
@@ -34,6 +40,8 @@ export type Evento = {
   meta: number | null
   /** Nota que tirou, depois da prova. */
   nota: number | null
+  /** O que cai na avaliação, ou o assunto da aula (usado pelo simulado e pelo replanejamento). */
+  conteudo: string
 }
 
 export type Sessao = {
@@ -92,6 +100,23 @@ export type Config = {
   caminhoResumoVault: string
   miniTimer: boolean
   iniciarComWindows: boolean
+  /** Modelo que o Claude Code usa nas tarefas de IA ("opus" ou "sonnet": sempre a versão mais nova). */
+  modeloIa: ModeloIa
+  /** Caminho do claude.exe escolhido à mão. Vazio: o app procura sozinho. */
+  caminhoClaude: string
+  /** Que matéria entra em cada dia da semana, e por quanto tempo. A IA monta e replaneja o plano dentro dela. */
+  semanaPadrao: BlocoSemana[]
+  /** Endereço do Canvas da faculdade (a API responde nele). O token fica fora da configuração, criptografado. */
+  canvasUrl: string
+}
+
+export type ModeloIa = 'opus' | 'sonnet'
+
+export type BlocoSemana = {
+  /** 0 = domingo ... 6 = sábado. */
+  dia: number
+  materiaId: number
+  minutos: number
 }
 
 export type StatusBloqueio = {
@@ -128,6 +153,204 @@ export type Estado = {
   lembreteAberto: boolean
   /** Mensagens curtas para mostrar na tela (ex.: "Fechei a Steam"). */
   avisos: { id: number; texto: string }[]
+  simulados: Simulado[]
+  ia: EstadoIa
+  /** Semestre atual (ex.: 2026/2). */
+  semestre: string
+  /** Plano de ensino lido pela IA, esperando a revisão. */
+  leituraPlano: LeituraPlano | null
+  /** Mudanças no plano sugeridas pela IA, esperando a aprovação. */
+  propostaPlano: PropostaPlano | null
+  canvas: EstadoCanvas
+  /** Novidades do Canvas (matérias e avaliações novas), esperando a revisão. */
+  revisaoCanvas: RevisaoCanvas | null
+}
+
+// ---------- Canvas (o ambiente virtual da faculdade) ----------
+
+export type EstadoCanvas = {
+  url: string
+  /** Tem token guardado. */
+  conectado: boolean
+  /** Nome da conta no Canvas, da última conexão. */
+  usuario: string | null
+  sincronizando: boolean
+  ultimaSync: number | null
+  erro: string | null
+  /** Cursos da última sincronização e a matéria ligada a cada um (nulo: ainda não ligado; 0: ignorado). */
+  cursos: { id: number; nome: string; materiaId: number | null }[]
+  /** Eventos do calendário que vieram do Canvas (o app atualiza a data, os pontos e a nota sozinho). */
+  eventosDoCanvas: number[]
+}
+
+export type CursoCanvas = { id: number; nome: string; codigo: string }
+
+export type TipoItemCanvas = 'prova' | 'atividade' | 'reavaliacao' | 'aula' | 'outro'
+
+/** Uma atividade (assignment) ou um evento do calendário do Canvas, já no formato do app. */
+export type ItemCanvas = {
+  /** "tarefa:123" (atividade) ou "evento:456" (evento do calendário). */
+  chave: string
+  cursoId: number
+  titulo: string
+  tipo: TipoItemCanvas
+  data: string | null
+  pontos: number | null
+  /** Nota lançada (só quando o professor publicou). */
+  nota: number | null
+  conteudo: string
+}
+
+export type CursoNaRevisao = CursoCanvas & {
+  /** Matéria do app que recebe o curso, ou criar uma nova, ou ignorar o curso. */
+  destino: number | 'nova' | 'ignorar'
+  /** Nome da matéria nova. */
+  nomeMateria: string
+}
+
+export type ItemNaRevisao = ItemCanvas & {
+  incluir: boolean
+  /** Avaliação que já estava no app e é a mesma do Canvas (para não duplicar). */
+  juntarCom: number | null
+}
+
+export type RevisaoCanvas = { criadaEm: number; cursos: CursoNaRevisao[]; itens: ItemNaRevisao[] }
+
+export type ArquivoCanvas = { id: number; cursoId: number; nome: string; tamanho: number; modulo: string }
+
+// ---------- IA (pelo Claude Code do PC) ----------
+
+export type TipoTrabalhoIa = 'teste' | 'gerar-simulado' | 'corrigir-simulado' | 'ler-plano' | 'replanejar'
+
+export type TrabalhoIa = {
+  tipo: TipoTrabalhoIa
+  /** O que aparece na tela enquanto a IA trabalha. */
+  descricao: string
+  desde: number
+  /** Simulado em correção, quando for o caso. */
+  simuladoId: number | null
+}
+
+export type EstadoIa = {
+  /** Caminho do claude.exe encontrado, ou nulo. */
+  claude: string | null
+  trabalho: TrabalhoIa | null
+  /** Resultado da última tarefa de IA (some da tela quando outra começa). */
+  ultimo: { tipo: TipoTrabalhoIa; ok: boolean; mensagem: string; quando: number } | null
+  usosMes: number
+  tokensMes: number
+}
+
+export type Questao = {
+  numero: number
+  /** Texto da questão. Matemática em texto simples com Unicode (x², √x, f'(x)). */
+  enunciado: string
+  pontos: number
+  conteudo: string
+  /** Resolução feita pela IA. A tela só mostra depois que a prova termina. */
+  resolucao: string
+  resposta: string
+}
+
+export type ProvaSimulado = {
+  titulo: string
+  instrucoes: string
+  questoes: Questao[]
+}
+
+export type SituacaoQuestao = 'certa' | 'parcial' | 'errada' | 'em-branco'
+
+export type CorrecaoQuestao = {
+  numero: number
+  nota: number
+  situacao: SituacaoQuestao
+  acertos: string
+  erros: string
+}
+
+export type SugestaoEstudo = { titulo: string; detalhe: string; minutos: number }
+
+export type Correcao = {
+  questoes: CorrecaoQuestao[]
+  /** Soma das notas das questões (estimativa: a IA pode errar). */
+  nota: number
+  total: number
+  resumo: string
+  pontosFracos: string[]
+  sugestoes: SugestaoEstudo[]
+  /** Observações da IA (ex.: foto ilegível, resolução de referência corrigida). */
+  avisos: string
+  corrigidaEm: number
+}
+
+export type Simulado = {
+  id: number
+  materiaId: number | null
+  /** Avaliação que o simulado imita. */
+  eventoId: number | null
+  conteudos: string
+  duracaoMin: number
+  criadoEm: number
+  prova: ProvaSimulado
+  iniciadoEm: number | null
+  terminadoEm: number | null
+  /** Sessão de estudo em que a prova foi feita. */
+  sessaoId: number | null
+  /** Nomes das fotos da resolução, na pasta do simulado. */
+  fotos: string[]
+  correcao: Correcao | null
+}
+
+export type PedidoSimulado = {
+  materiaId: number | null
+  eventoId: number | null
+  conteudos: string
+  duracaoMin: number
+  /** Arquivo de prova antiga (PDF ou foto) para a IA imitar o estilo. */
+  modelo: string | null
+  /** Material de aula (PDFs baixados do Canvas: slides, listas) para a IA seguir o conteúdo e a notação. */
+  materiais?: string[]
+  observacoes: string
+}
+
+// ---------- Plano de ensino e replanejamento ----------
+
+export type AvaliacaoLida = {
+  incluir: boolean
+  titulo: string
+  tipo: 'prova' | 'atividade' | 'reavaliacao'
+  data: string | null
+  pontos: number | null
+  conteudo: string
+}
+
+export type AulaLida = { incluir: boolean; data: string | null; conteudo: string }
+
+export type LeituraPlano = {
+  arquivo: string
+  /** Matéria que já existia e vai receber o plano, ou nulo para criar uma nova. */
+  materiaId: number | null
+  materia: string
+  avaliacoes: AvaliacaoLida[]
+  aulas: AulaLida[]
+  bibliografia: string[]
+  observacoes: string
+  lidaEm: number
+}
+
+export type Mudanca = { id: number; motivo: string } & (
+  | { tipo: 'mover'; tarefaId: number; data: string }
+  | { tipo: 'ajustar'; tarefaId: number; minutos: number | null; titulo: string | null; detalhe: string | null }
+  | { tipo: 'criar'; data: string; materiaId: number | null; titulo: string; detalhe: string; minutos: number }
+  | { tipo: 'remover'; tarefaId: number }
+)
+
+export type PropostaPlano = {
+  criadaEm: number
+  resumo: string
+  mudancas: Mudanca[]
+  /** Quantas mudanças da IA foram descartadas por não fazerem sentido (tarefa que não existe, data no passado). */
+  descartadas: number
 }
 
 export type ResultadoEncerrar = { ok: true } | { ok: false; motivo: 'frase' | 'sem-sessao' }

@@ -1,5 +1,5 @@
 // Ponte segura entre as telas e o processo principal: só estas funções ficam visíveis no React.
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { Api } from './api'
 
 const chamar =
@@ -47,7 +47,44 @@ const api: Api = {
   instalarBloqueio: chamar('bloqueio:instalar') as Api['instalarBloqueio'],
   desinstalarBloqueio: chamar('bloqueio:desinstalar') as Api['desinstalarBloqueio'],
   escolherVault: chamar('vault:escolher') as Api['escolherVault'],
-  abrirPrincipal: chamar('janela:principal') as Api['abrirPrincipal']
+  abrirPrincipal: chamar('janela:principal') as Api['abrirPrincipal'],
+  arquivarMateria: chamar('materia:arquivar') as Api['arquivarMateria'],
+  virarSemestre: chamar('semestre:virar') as Api['virarSemestre'],
+
+  testarIa: chamar('ia:testar') as Api['testarIa'],
+  cancelarIa: chamar('ia:cancelar') as Api['cancelarIa'],
+  limparIa: chamar('ia:limpar') as Api['limparIa'],
+  escolherClaude: chamar('ia:escolherClaude') as Api['escolherClaude'],
+
+  escolherModelo: chamar('simulado:escolherModelo') as Api['escolherModelo'],
+  gerarSimulado: chamar('simulado:gerar') as Api['gerarSimulado'],
+  iniciarSimulado: chamar('simulado:iniciar') as Api['iniciarSimulado'],
+  terminarSimulado: chamar('simulado:terminar') as Api['terminarSimulado'],
+  removerSimulado: chamar('simulado:remover') as Api['removerSimulado'],
+  adicionarFotos: chamar('simulado:adicionarFotos') as Api['adicionarFotos'],
+  escolherFotos: chamar('simulado:escolherFotos') as Api['escolherFotos'],
+  removerFoto: chamar('simulado:removerFoto') as Api['removerFoto'],
+  corrigirSimulado: chamar('simulado:corrigir') as Api['corrigirSimulado'],
+  miniatura: chamar('simulado:miniatura') as Api['miniatura'],
+  // Desde o Electron 32 o File não traz mais o caminho: só o webUtils sabe.
+  caminhoDe: (arquivo: File) => webUtils.getPathForFile(arquivo),
+
+  escolherPdf: chamar('plano:escolherPdf') as Api['escolherPdf'],
+  lerPlano: chamar('plano:ler') as Api['lerPlano'],
+  aplicarLeitura: chamar('plano:aplicarLeitura') as Api['aplicarLeitura'],
+  descartarLeitura: chamar('plano:descartarLeitura') as Api['descartarLeitura'],
+  replanejar: chamar('plano:replanejar') as Api['replanejar'],
+  aplicarProposta: chamar('plano:aplicarProposta') as Api['aplicarProposta'],
+  descartarProposta: chamar('plano:descartarProposta') as Api['descartarProposta'],
+
+  conectarCanvas: chamar('canvas:conectar') as Api['conectarCanvas'],
+  desconectarCanvas: chamar('canvas:desconectar') as Api['desconectarCanvas'],
+  sincronizarCanvas: chamar('canvas:sincronizar') as Api['sincronizarCanvas'],
+  ligarCursoCanvas: chamar('canvas:ligarCurso') as Api['ligarCursoCanvas'],
+  aplicarRevisaoCanvas: chamar('canvas:aplicarRevisao') as Api['aplicarRevisaoCanvas'],
+  ignorarRevisaoCanvas: chamar('canvas:ignorarRevisao') as Api['ignorarRevisaoCanvas'],
+  arquivosCanvas: chamar('canvas:arquivos') as Api['arquivosCanvas'],
+  baixarCanvas: chamar('canvas:baixar') as Api['baixarCanvas']
 }
 
 contextBridge.exposeInMainWorld('api', api)

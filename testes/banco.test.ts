@@ -85,7 +85,7 @@ describe('banco e repositório', () => {
     expect(repo.eventos().some((e) => e.titulo === 'Prova 1 de Arquitetura')).toBe(true)
   })
 
-  it('atualiza um banco da v1.0: a data do evento pode ficar vazia e as sessões ganham o check-in', async () => {
+  it('atualiza um banco da v1.0: data do evento opcional, check-in, conteúdo e semestre', async () => {
     const arquivo = join(mkdtempSync(join(tmpdir(), 'estudos-')), 'estudos.sqlite')
     const SQL = await initSqlJs({ wasmBinary: readFileSync(wasm) as unknown as ArrayBuffer })
     const antigo = new SQL.Database()
@@ -106,8 +106,10 @@ describe('banco e repositório', () => {
     const banco = await Banco.abrir(arquivo, wasm)
     const repo = new Repositorio(banco)
     expect(repo.eventos()).toEqual([
-      { id: 7, materiaId: 1, data: '2026-12-01', titulo: 'Prova de Física', tipo: 'prova', pontos: 30, meta: 18, nota: null }
+      { id: 7, materiaId: 1, data: '2026-12-01', titulo: 'Prova de Física', tipo: 'prova', pontos: 30, meta: 18, nota: null, conteudo: '' }
     ])
+    // v1.2: a matéria antiga ganha o semestre vazio, sem bibliografia, e não fica arquivada.
+    expect(repo.materias()[0]).toMatchObject({ nome: 'Física', arquivada: false, semestre: '', bibliografia: '' })
     expect(repo.sessoes()[0]).toMatchObject({ id: 3, estudoSeg: 600, checkinFeito: '', checkinTravou: '' })
     const id = repo.salvarEvento({ materiaId: 1, data: null, titulo: 'Reavaliação', tipo: 'reavaliacao', pontos: 30, meta: null, nota: null })
     expect(repo.eventos().find((e) => e.id === id)?.data).toBeNull()

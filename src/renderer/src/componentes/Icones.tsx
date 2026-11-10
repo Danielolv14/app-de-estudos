@@ -117,3 +117,32 @@ export const IconeFechar = ({ tamanho = 16 }: P) => (
     <path d="M6 6l12 12M18 6L6 18" />
   </svg>
 )
+
+/** Folha de prova com o lápis. */
+export const IconeSimulado = ({ tamanho }: P) => (
+  <svg {...base(tamanho)}>
+    <path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h4" />
+    <path d="M8.5 8h6M8.5 11.5h4" />
+    <path d="M18.5 12.5l2 2-6 6h-2v-2z" />
+  </svg>
+)
+
+/** Grade do mapa de calor. */
+export const IconeConstancia = ({ tamanho }: P) => (
+  <svg {...base(tamanho)}>
+    <rect x="4" y="4" width="4" height="4" rx="1" />
+    <rect x="10" y="4" width="4" height="4" rx="1" />
+    <rect x="16" y="4" width="4" height="4" rx="1" />
+    <rect x="4" y="10" width="4" height="4" rx="1" />
+    <rect x="10" y="10" width="4" height="4" rx="1" />
+    <rect x="4" y="16" width="4" height="4" rx="1" />
+  </svg>
+)
+
+export const IconeFoto = ({ tamanho = 16 }: P) => (
+  <svg {...base(tamanho)}>
+    <rect x="3.5" y="6" width="17" height="13" rx="2.5" />
+    <path d="M8.5 6l1.5-2.5h4L15.5 6" />
+    <circle cx="12" cy="12.5" r="3.3" />
+  </svg>
+)

@@ -1898,6 +1898,1246 @@ h2 {
 }
 
 
+/* ---------- IA: aviso de trabalho e erros ---------- */
+
+.titulo-tela__botoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+/* Fica no canto de baixo, à esquerda dos avisos, enquanto a IA trabalha (leva minutos), em qualquer tela. */
+.trabalho-ia {
+  position: fixed;
+  left: 234px;
+  bottom: 22px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 380px;
+  height: 40px;
+  padding: 0 8px 0 14px;
+  border: 1px solid var(--destaque-borda);
+  border-radius: var(--raio-g);
+  background: var(--superficie-2);
+  box-shadow: var(--sombra-flutuante);
+  font-size: 13px;
+  animation: abrir var(--medio) var(--curva);
+}
+
+.trabalho-ia > span:not(.trabalho-ia__tempo) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trabalho-ia__tempo {
+  font-family: var(--fonte-mono);
+  color: var(--destaque);
+}
+
+/* Bloco "a IA está trabalhando" dentro de uma tela. */
+.ia-trabalhando {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  border-color: var(--destaque-borda);
+}
+
+.ia-trabalhando > div {
+  flex: 1;
+}
+
+.ia-trabalhando strong {
+  display: block;
+  font-weight: 500;
+}
+
+.ia-trabalhando span {
+  font-size: 13px;
+  color: var(--texto-2);
+}
+
+.ia-trabalhando--solto {
+  margin: 14px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--destaque-borda);
+  border-radius: var(--raio-g);
+  background: var(--superficie-2);
+}
+
+.erro-ia {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--erro-rgb), 0.35);
+  border-radius: var(--raio-m);
+  background: rgba(var(--erro-rgb), 0.08);
+  color: var(--texto);
+  font-size: 13px;
+}
+
+.area-fotos + .erro-ia,
+.area-fotos + .mudo {
+  margin-top: 10px;
+}
+
+/* Texto que pode ter caminho de arquivo comprido. */
+.quebra {
+  overflow-wrap: anywhere;
+}
+
+code {
+  padding: 1px 6px;
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  background: var(--superficie-2);
+  font-family: var(--fonte-mono);
+  font-size: 12.5px;
+  color: var(--texto);
+}
+
+/* ---------- Simulado ---------- */
+
+.simulados,
+.constancia {
+  max-width: 980px;
+}
+
+.voltar {
+  margin: -14px 0 14px -6px;
+}
+
+.lista-simulados {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lista-simulados li + li {
+  margin-top: 2px;
+}
+
+.lista-simulados button {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto auto 16px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--raio-m);
+  background: transparent;
+  color: var(--texto);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--rapido) var(--curva),
+    border-color var(--rapido) var(--curva);
+}
+
+.lista-simulados button:hover {
+  background: var(--superficie-2);
+  border-color: var(--borda);
+}
+
+.lista-simulados button > svg {
+  color: var(--texto-3);
+}
+
+.lista-simulados__titulo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.lista-simulados__extra {
+  font-size: 12.5px;
+  color: var(--texto-3);
+  white-space: nowrap;
+}
+
+.lista-simulados__etapa {
+  min-width: 96px;
+  font-size: 12.5px;
+  color: var(--texto-2);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.lista-simulados__etapa--nota {
+  font-family: var(--fonte-mono);
+  color: var(--texto);
+}
+
+/* Cronômetro da prova: barra até 1,5x o tempo, com um traço no tempo da prova. */
+.cronometro {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0 0 14px;
+  padding: 14px 18px 16px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-g);
+  background: var(--superficie-1);
+}
+
+.cronometro__numeros {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.cronometro__tempo {
+  font-family: var(--fonte-mono);
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--destaque);
+}
+
+.cronometro__trilho {
+  position: relative;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--superficie-3);
+}
+
+.cronometro__trilho i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: var(--destaque);
+  transition: width 1s linear;
+}
+
+.cronometro__trilho b {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--texto-2);
+}
+
+.cronometro--estourou .cronometro__tempo {
+  color: var(--erro);
+}
+
+.cronometro--estourou .cronometro__trilho i {
+  background: var(--erro);
+}
+
+/* Prova: cada questão num card, com a situação da correção no traço à esquerda. */
+.questoes {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.questoes__instrucoes {
+  margin: 0 0 12px;
+  max-width: 82ch;
+}
+
+.questao {
+  position: relative;
+  padding: 18px 20px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-g);
+  background: var(--superficie-1);
+}
+
+.questao + .questao {
+  margin-top: 10px;
+}
+
+.questao::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 18px;
+  bottom: 18px;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.questao--certa::before {
+  background: var(--sucesso);
+}
+
+.questao--parcial::before {
+  background: var(--destaque);
+}
+
+.questao--errada::before {
+  background: var(--erro);
+}
+
+.questao--em-branco::before {
+  background: var(--texto-3);
+}
+
+.questao__topo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.questao__topo strong {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.questao__topo .mudo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+
+.questao__pontos {
+  font-family: var(--fonte-mono);
+  font-size: 12.5px;
+  color: var(--texto-2);
+  white-space: nowrap;
+}
+
+/* Enunciado: a IA escreve com quebras de linha e Unicode (√, ², π). */
+.questao__enunciado {
+  margin: 0;
+  max-width: 82ch;
+  font-size: 15px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.questao__correcao {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borda);
+  font-size: 13px;
+  color: var(--texto-2);
+}
+
+.questao__correcao p {
+  margin: 0;
+  max-width: 82ch;
+  white-space: pre-wrap;
+}
+
+.questao__correcao strong {
+  font-weight: 500;
+  color: var(--texto);
+}
+
+.questao__resolucao {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--raio-m);
+  background: var(--superficie-2);
+  font-size: 13.5px;
+  color: var(--texto-2);
+}
+
+.questao__resolucao strong {
+  font-weight: 500;
+  color: var(--texto);
+}
+
+.questao__resolucao p {
+  margin: 6px 0 0;
+  max-width: 82ch;
+  white-space: pre-wrap;
+}
+
+.selo-situacao {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  margin-bottom: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-p);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--texto-2);
+}
+
+.selo-situacao--certa {
+  border-color: rgba(var(--sucesso-rgb), 0.4);
+  color: var(--sucesso);
+}
+
+.selo-situacao--parcial {
+  border-color: var(--destaque-borda);
+  color: var(--destaque);
+}
+
+.selo-situacao--errada {
+  border-color: rgba(var(--erro-rgb), 0.4);
+  color: var(--erro);
+}
+
+/* Resultado: a nota grande à esquerda, o resumo à direita. */
+.resultado {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 24px;
+  margin-bottom: 14px;
+}
+
+.resultado__nota {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 24px;
+  border-right: 1px solid var(--borda);
+}
+
+.resultado__numero {
+  font-family: var(--fonte-mono);
+  font-size: 44px;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: var(--destaque);
+}
+
+.resultado__nota .mudo {
+  font-size: 12.5px;
+}
+
+.resultado .modal__texto {
+  margin-top: 0;
+}
+
+.resultado__rotulo {
+  display: block;
+  margin: 4px 0 6px;
+  font-weight: 500;
+}
+
+.resultado__fracos {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  color: var(--texto-2);
+}
+
+.resultado__fracos li + li {
+  margin-top: 3px;
+}
+
+.sugestoes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sugestoes li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.sugestoes li + li {
+  border-top: 1px solid var(--borda);
+}
+
+.sugestoes strong {
+  display: block;
+  font-weight: 500;
+}
+
+.sugestoes .mudo {
+  font-size: 12.5px;
+}
+
+.campo-data {
+  width: 150px;
+  height: 32px;
+}
+
+/* Fotos da resolução: miniaturas e o botão de adicionar, na mesma área de soltar. */
+.area-fotos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed var(--borda-forte);
+  border-radius: var(--raio-g);
+  background: var(--superficie-2);
+  transition:
+    border-color var(--rapido) var(--curva),
+    background var(--rapido) var(--curva);
+}
+
+.area-fotos--arrastando {
+  border-color: var(--destaque-borda);
+  background: var(--destaque-suave);
+}
+
+.area-fotos__mais {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  background: var(--superficie-1);
+  color: var(--texto-2);
+  font-size: 12.5px;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--rapido) var(--curva),
+    color var(--rapido) var(--curva);
+}
+
+.area-fotos__mais:hover:not(:disabled) {
+  border-color: var(--borda-hover);
+  color: var(--texto);
+}
+
+.area-fotos__mais:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Sem foto ainda, o botão ocupa a área toda. */
+.area-fotos__mais:only-child {
+  grid-column: 1 / -1;
+  min-height: 110px;
+}
+
+.miniatura {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 150px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-m);
+  background: var(--superficie-1);
+}
+
+.miniatura img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.miniatura .mudo {
+  padding: 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.miniatura__tirar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-p);
+  background: var(--veu);
+  color: var(--texto);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--rapido) var(--curva);
+}
+
+.miniatura:hover .miniatura__tirar,
+.miniatura__tirar:focus-visible {
+  opacity: 1;
+}
+
+/* ---------- Constância ---------- */
+
+.numeros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.numeros .painel + .painel {
+  margin-top: 0;
+}
+
+.numero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.numero__valor {
+  font-family: var(--fonte-mono);
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: var(--destaque);
+}
+
+.numero__valor--apagado {
+  color: var(--texto);
+}
+
+.numero__rotulo {
+  font-size: 13px;
+  color: var(--texto-3);
+}
+
+/* Mapa de calor: uma coluna por semana, uma linha por dia (seg em cima). */
+.mapa {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.mapa__linhas {
+  display: grid;
+  grid-template-rows: repeat(7, 18px);
+  gap: 5px;
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--texto-3);
+}
+
+.mapa__grade {
+  display: grid;
+  grid-template-rows: repeat(7, 18px);
+  grid-auto-flow: column;
+  grid-auto-columns: 18px;
+  gap: 5px;
+}
+
+.mapa__dia {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--superficie-3);
+}
+
+.mapa__dia--1 {
+  background: rgba(var(--destaque-rgb), 0.22);
+}
+
+.mapa__dia--2 {
+  background: rgba(var(--destaque-rgb), 0.42);
+}
+
+.mapa__dia--3 {
+  background: rgba(var(--destaque-rgb), 0.68);
+}
+
+.mapa__dia--4 {
+  background: var(--destaque);
+}
+
+.mapa__dia--futuro {
+  background: transparent;
+  border: 1px dashed var(--borda);
+}
+
+/* Dia com meta que ficou abaixo: contorno vermelho fino. */
+.mapa__dia--falhou {
+  box-shadow: inset 0 0 0 1px rgba(var(--erro-rgb), 0.7);
+}
+
+.mapa__dia--hoje {
+  outline: 1px solid var(--texto-2);
+  outline-offset: 1px;
+}
+
+.mapa__legenda {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--texto-3);
+}
+
+.mapa__legenda .mapa__dia {
+  width: 12px;
+  height: 12px;
+}
+
+.barras {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.barras li {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 150px 96px;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 0;
+  font-size: 13px;
+}
+
+.barras__semana {
+  color: var(--texto-2);
+  white-space: nowrap;
+}
+
+/* Planejado é o trilho claro; feito é a barra âmbar por cima. */
+.barras__trilho {
+  position: relative;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--superficie-2);
+}
+
+.barras__planejado,
+.barras__feito {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  max-width: 100%;
+  border-radius: 3px;
+}
+
+.barras__planejado {
+  background: var(--superficie-3);
+  box-shadow: inset 0 0 0 1px var(--borda-forte);
+}
+
+.barras__feito {
+  top: 2px;
+  bottom: 2px;
+  background: var(--destaque);
+}
+
+.barras__valor {
+  font-family: var(--fonte-mono);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.barras__dias {
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.barras__amostra {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.barras__amostra--planejado {
+  background: var(--superficie-3);
+  box-shadow: inset 0 0 0 1px var(--borda-forte);
+}
+
+.barras__amostra--feito {
+  background: var(--destaque);
+}
+
+/* ---------- Semana padrão (Ajustes) ---------- */
+
+.semana-dia {
+  min-height: 132px;
+  gap: 6px;
+}
+
+.semana-dia__nome {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.semana-dia__nome .mudo {
+  font-size: 11.5px;
+  font-weight: 400;
+}
+
+.semana-dia__bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: var(--raio-p);
+  background: var(--superficie-2);
+}
+
+.semana-dia__linha {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.semana-dia__linha .botao-texto {
+  display: grid;
+  place-items: center;
+  padding: 4px;
+}
+
+.semana-dia__mais {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  align-self: flex-start;
+  font-size: 12px;
+}
+
+.seletor--mini {
+  height: 28px;
+  padding: 0 6px;
+  border-radius: var(--raio-p);
+  font-size: 12px;
+}
+
+/* ---------- Proposta de replanejamento ---------- */
+
+.proposta {
+  margin-bottom: 14px;
+  border-color: var(--destaque-borda);
+}
+
+.proposta .modal__texto {
+  margin-top: 0;
+}
+
+.mudancas {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.mudancas li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px 64px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 10px 10px 10px 14px;
+  transition: opacity var(--rapido) var(--curva);
+}
+
+.mudancas li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--cor-materia, var(--texto-3));
+}
+
+.mudancas li + li {
+  border-top: 1px solid var(--borda);
+}
+
+.mudancas li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mudancas strong {
+  font-weight: 500;
+}
+
+.mudancas .mudo {
+  font-size: 12.5px;
+}
+
+.mudanca--desmarcada {
+  opacity: 0.45;
+}
+
+.mudanca__antes-depois {
+  font-size: 13px;
+  color: var(--texto-2);
+}
+
+.mudanca__antes-depois s {
+  color: var(--texto-3);
+  text-decoration-color: var(--borda-hover);
+}
+
+.selo-mudanca {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  margin-top: 1px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-p);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--texto-2);
+}
+
+.selo-mudanca--criar {
+  border-color: rgba(var(--sucesso-rgb), 0.4);
+  color: var(--sucesso);
+}
+
+.selo-mudanca--remover {
+  border-color: rgba(var(--erro-rgb), 0.4);
+  color: var(--erro);
+}
+
+.selo-mudanca--mover {
+  border-color: var(--destaque-borda);
+  color: var(--destaque);
+}
+
+/* ---------- Revisão do plano de ensino lido ---------- */
+
+.revisao {
+  margin-bottom: 14px;
+  border-color: var(--destaque-borda);
+}
+
+.revisao .form label {
+  max-width: 420px;
+}
+
+.revisao__titulo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 18px 0 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.revisao__titulo .mudo {
+  font-weight: 400;
+}
+
+.revisao__titulo .botao-texto {
+  margin-left: auto;
+}
+
+.revisao__tabela {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.revisao__linha {
+  display: grid;
+  grid-template-columns: 22px minmax(140px, 1.2fr) 130px 150px 70px minmax(160px, 2fr);
+  align-items: center;
+  gap: 8px;
+  transition: opacity var(--rapido) var(--curva);
+}
+
+.revisao__linha .campo,
+.revisao__linha .seletor {
+  height: 32px;
+  padding: 0 9px;
+  font-size: 13px;
+}
+
+.revisao__linha .marcar {
+  margin: 0;
+}
+
+.revisao__linha--cabecalho {
+  font-size: 12px;
+  color: var(--texto-3);
+}
+
+.revisao__linha--fora {
+  opacity: 0.45;
+}
+
+.revisao__aulas {
+  list-style: none;
+  max-height: 280px;
+  margin: 0;
+  padding: 0 6px 0 0;
+  overflow-y: auto;
+}
+
+.revisao__aulas li {
+  display: grid;
+  grid-template-columns: 22px 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  transition: opacity var(--rapido) var(--curva);
+}
+
+.revisao__aulas li + li {
+  border-top: 1px solid var(--borda);
+}
+
+.revisao__aulas .marcar {
+  margin: 0;
+}
+
+.revisao__dia {
+  font-family: var(--fonte-mono);
+  font-size: 12.5px;
+  color: var(--texto-2);
+}
+
+.revisao__biblio {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--texto-2);
+}
+
+.revisao__biblio li + li {
+  margin-top: 3px;
+}
+
+/* ---------- Canvas (Ajustes, revisão no Calendário e PDFs do curso) ---------- */
+
+.canvas-conectar {
+  margin-top: 16px;
+  max-width: 760px;
+}
+
+.canvas-passos {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--texto-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.canvas-passos strong {
+  color: var(--texto);
+  font-weight: 500;
+}
+
+.canvas-cursos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.canvas-cursos li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px minmax(0, 220px);
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0 7px 12px;
+  border-left: 2px solid var(--cor-materia, var(--borda-forte));
+  font-size: 13px;
+  transition: opacity var(--rapido) var(--curva);
+}
+
+.canvas-cursos li + li {
+  margin-top: 4px;
+}
+
+.canvas-cursos .seletor,
+.canvas-cursos .campo {
+  height: 32px;
+  padding: 0 9px;
+  font-size: 13px;
+}
+
+.canvas-itens {
+  list-style: none;
+  max-height: 340px;
+  margin: 0;
+  padding: 0 6px 0 0;
+  overflow-y: auto;
+}
+
+.canvas-itens li {
+  display: grid;
+  grid-template-columns: 22px 88px minmax(0, 1fr) 250px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  font-size: 13px;
+  transition: opacity var(--rapido) var(--curva);
+}
+
+.canvas-itens li + li {
+  border-top: 1px solid var(--borda);
+}
+
+.canvas-itens .marcar {
+  margin: 0;
+}
+
+.canvas-itens .seletor {
+  height: 32px;
+  padding: 0 9px;
+  font-size: 13px;
+}
+
+.canvas-itens--desmarcado {
+  opacity: 0.45;
+}
+
+.canvas-itens__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.canvas-itens__texto strong {
+  font-weight: 500;
+}
+
+.canvas-itens__texto .mudo {
+  font-size: 12px;
+}
+
+.pdfs-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-m);
+  background: var(--superficie-2);
+}
+
+.pdfs-canvas > .mudo {
+  margin: 0;
+  font-size: 13px;
+}
+
+.pdfs-canvas__topo {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.pdfs-canvas__topo .seletor,
+.pdfs-canvas__topo .campo {
+  height: 32px;
+  padding: 0 9px;
+  font-size: 13px;
+}
+
+.pdfs-canvas__lista {
+  list-style: none;
+  max-height: 260px;
+  margin: 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+}
+
+.pdfs-canvas__lista li + li {
+  border-top: 1px solid var(--borda);
+}
+
+.pdfs-canvas__lista button,
+.pdfs-canvas__lista label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: var(--raio-p);
+  background: none;
+  color: var(--texto);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--rapido) var(--curva);
+}
+
+.pdfs-canvas__lista label {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+}
+
+.pdfs-canvas__lista label .marcar {
+  margin: 0;
+}
+
+.pdfs-canvas__lista button:hover:not(:disabled),
+.pdfs-canvas__lista label:hover {
+  background: var(--superficie-3);
+}
+
+.pdfs-canvas__lista button:focus-visible {
+  outline: 2px solid var(--destaque-borda);
+  outline-offset: -2px;
+}
+
+.pdfs-canvas__lista .mudo {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pdfs-canvas .form__botoes {
+  align-items: center;
+  margin-top: 0;
+}
+
+.pdfs-canvas .form__botoes .mudo {
+  margin-right: auto;
+  font-size: 12px;
+}
+
+.ficha-arquivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 280px;
+  height: 30px;
+  padding: 0 4px 0 10px;
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio-p);
+  font-size: 12.5px;
+  color: var(--texto-2);
+}
+
+.ficha-arquivo > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* ---------- Janela estreita (perto do mínimo de 1000px) ---------- */
 
 @media (max-width: 1100px) {
@@ -1917,5 +3157,21 @@ h2 {
   .calendario {
     grid-template-columns: minmax(0, 1fr) 260px;
     gap: 20px;
+  }
+
+  .revisao__linha {
+    grid-template-columns: 22px minmax(120px, 1.2fr) 118px 140px 60px minmax(120px, 2fr);
+  }
+
+  .barras li {
+    grid-template-columns: 100px minmax(0, 1fr) 140px 88px;
+  }
+
+  .canvas-itens li {
+    grid-template-columns: 22px 80px minmax(0, 1fr) 200px;
+  }
+
+  .canvas-cursos li {
+    grid-template-columns: minmax(0, 1fr) 200px minmax(0, 170px);
   }
 }

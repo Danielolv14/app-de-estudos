@@ -9,7 +9,10 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS materias (
   id INTEGER PRIMARY KEY,
   nome TEXT NOT NULL,
-  cor TEXT NOT NULL
+  cor TEXT NOT NULL,
+  arquivada INTEGER NOT NULL DEFAULT 0,
+  semestre TEXT NOT NULL DEFAULT '',
+  bibliografia TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS tarefas (
   id INTEGER PRIMARY KEY,
@@ -30,7 +33,8 @@ CREATE TABLE IF NOT EXISTS eventos (
   tipo TEXT NOT NULL,
   pontos REAL,
   meta REAL,
-  nota REAL
+  nota REAL,
+  conteudo TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS sessoes (
   id INTEGER PRIMARY KEY,
@@ -49,6 +53,31 @@ CREATE INDEX IF NOT EXISTS sessoes_dia ON sessoes(dia);
 CREATE TABLE IF NOT EXISTS metas_dia (
   data TEXT PRIMARY KEY,
   minutos INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS simulados (
+  id INTEGER PRIMARY KEY,
+  materia_id INTEGER REFERENCES materias(id) ON DELETE SET NULL,
+  evento_id INTEGER REFERENCES eventos(id) ON DELETE SET NULL,
+  conteudos TEXT NOT NULL DEFAULT '',
+  duracao_min INTEGER NOT NULL,
+  criado_em INTEGER NOT NULL,
+  prova TEXT NOT NULL,
+  iniciado_em INTEGER,
+  terminado_em INTEGER,
+  sessao_id INTEGER REFERENCES sessoes(id) ON DELETE SET NULL,
+  fotos TEXT NOT NULL DEFAULT '[]',
+  correcao TEXT
+);
+CREATE TABLE IF NOT EXISTS ia_usos (
+  id INTEGER PRIMARY KEY,
+  quando INTEGER NOT NULL,
+  tipo TEXT NOT NULL,
+  modelo TEXT NOT NULL,
+  segundos REAL NOT NULL,
+  tokens_entrada INTEGER NOT NULL DEFAULT 0,
+  tokens_saida INTEGER NOT NULL DEFAULT 0,
+  ok INTEGER NOT NULL,
+  erro TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS kv (
   chave TEXT PRIMARY KEY,
@@ -81,7 +110,10 @@ export class Banco {
     return this.todos(`PRAGMA table_info(${tabela})`).map((l) => ({ nome: String(l.name), obrigatoria: Number(l.notnull) === 1 }))
   }
 
-  /** Bancos criados pela v1.0: a data do evento passa a poder ficar vazia, e as sessões ganham o check-in. */
+  /**
+   * Bancos de versões anteriores: a data do evento passa a poder ficar vazia (v1.1), as sessões ganham o check-in (v1.1),
+   * os eventos ganham o conteúdo e as matérias, o semestre e a bibliografia (v1.2).
+   */
   private atualizarEsquema(): boolean {
     let mudou = false
     if (this.colunas('eventos').find((c) => c.nome === 'data')?.obrigatoria) {
@@ -104,10 +136,17 @@ export class Banco {
       })
       mudou = true
     }
-    const sessoes = this.colunas('sessoes').map((c) => c.nome)
-    for (const coluna of ['checkin_feito', 'checkin_travou']) {
-      if (!sessoes.includes(coluna)) {
-        this.db.exec(`ALTER TABLE sessoes ADD COLUMN ${coluna} TEXT NOT NULL DEFAULT ''`)
+    const novas: [tabela: string, coluna: string, tipo: string][] = [
+      ['sessoes', 'checkin_feito', "TEXT NOT NULL DEFAULT ''"],
+      ['sessoes', 'checkin_travou', "TEXT NOT NULL DEFAULT ''"],
+      ['eventos', 'conteudo', "TEXT NOT NULL DEFAULT ''"],
+      ['materias', 'arquivada', 'INTEGER NOT NULL DEFAULT 0'],
+      ['materias', 'semestre', "TEXT NOT NULL DEFAULT ''"],
+      ['materias', 'bibliografia', "TEXT NOT NULL DEFAULT ''"]
+    ]
+    for (const [tabela, coluna, tipo] of novas) {
+      if (!this.colunas(tabela).some((c) => c.nome === coluna)) {
+        this.db.exec(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} ${tipo}`)
         mudou = true
       }
     }

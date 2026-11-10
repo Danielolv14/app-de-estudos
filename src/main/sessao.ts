@@ -54,13 +54,14 @@ export class GerenciadorSessao {
     return true
   }
 
-  iniciar(tarefaId: number | null): SessaoAtiva {
+  /** `materiaSemTarefa`: matéria do estudo livre (o simulado começa a sessão assim quando não há tarefa). */
+  iniciar(tarefaId: number | null, materiaSemTarefa: number | null = null): SessaoAtiva {
     const atual = this.ativa()
     if (atual) return atual
     const agora = this.g.agora()
     const tarefa = tarefaId ? this.repo.tarefa(tarefaId) : undefined
     const dia = dataLocal(agora)
-    const materiaId = tarefa?.materiaId ?? null
+    const materiaId = tarefa ? tarefa.materiaId : materiaSemTarefa
     const sessaoId = this.repo.abrirSessao({ tarefaId: tarefa?.id ?? null, materiaId, dia, inicio: agora })
     const nova: SessaoAtiva = {
       sessaoId,

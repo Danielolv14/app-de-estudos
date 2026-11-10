@@ -4,6 +4,7 @@ import { diaMes, diaMesExtenso, formatarDuracao, inicioDaSemana, metaDoDia, nome
 import { estiloMateria, nomeDe } from '../componentes/Basicos'
 import { estaAtrasada, MoverAtrasada } from '../componentes/Atrasada'
 import { FormTarefa } from '../componentes/Formularios'
+import { BotaoReplanejar, PropostaPlano } from '../componentes/Planejamento'
 import { IconeEditar, IconeMais } from '../componentes/Icones'
 
 export function Plano({ estado }: { estado: Estado }) {
@@ -71,15 +72,23 @@ export function Plano({ estado }: { estado: Estado }) {
           <h1>Plano</h1>
           <p>A soma das horas previstas de cada dia vira a meta do dia, que a trava usa para liberar os sites.</p>
         </div>
-        <button className="tecla tecla--ambar" onClick={() => setEditando({ data: hoje })}>
-          <IconeMais />
-          Nova tarefa
-        </button>
+        <div className="titulo-tela__botoes">
+          <BotaoReplanejar estado={estado} />
+          <button className="tecla tecla--ambar" onClick={() => setEditando({ data: hoje })}>
+            <IconeMais />
+            Nova tarefa
+          </button>
+        </div>
       </div>
+
+      {estado.propostaPlano && <PropostaPlano key={estado.propostaPlano.criadaEm} estado={estado} />}
 
       {atrasadas.length > 0 && (
         <div className="painel" style={{ marginBottom: 28 }}>
           <h2>Atrasadas de semanas anteriores</h2>
+          <p className="mudo" style={{ marginTop: -6 }}>
+            Passe cada uma para outro dia, ou peça para a IA replanejar tudo de uma vez.
+          </p>
           <ul className="tarefas">{atrasadas.map((t) => linhaTarefa(t, true))}</ul>
         </div>
       )}

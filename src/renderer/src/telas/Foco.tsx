@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Estado, Tarefa } from '@shared/tipos'
+import { formatarNota } from '@shared/notas'
 import {
   diaMes,
   estudadoNoDia,
@@ -192,9 +193,27 @@ export function Foco({ estado, abrirTrava }: { estado: Estado; abrirTrava: numbe
         )}
       </aside>
 
-      {encerrando && <Encerrar tarefa={ativa?.tarefaId ? tarefas.find((t) => t.id === ativa.tarefaId) : undefined} aoFechar={() => setEncerrando(false)} />}
+      {encerrando && (
+        <Encerrar
+          tarefa={ativa?.tarefaId ? tarefas.find((t) => t.id === ativa.tarefaId) : undefined}
+          sugestao={checkinDoSimulado(estado)}
+          aoFechar={() => setEncerrando(false)}
+        />
+      )}
     </div>
   )
+}
+
+/** Se a sessão teve simulado, o check-in já vem com a nota e os pontos fracos (os erros vão para o resumo do vault). */
+function checkinDoSimulado(estado: Estado): { feito: string; travou: string } | undefined {
+  const s = estado.simulados.find((x) => x.sessaoId !== null && x.sessaoId === estado.ativa?.sessaoId)
+  if (!s) return undefined
+  if (!s.correcao) return { feito: `Simulado: ${s.prova.titulo}`, travou: '' }
+  const c = s.correcao
+  return {
+    feito: `Simulado: ${formatarNota(c.nota)} de ${formatarNota(c.total)} (estimado pela IA)`.slice(0, 300),
+    travou: c.pontosFracos.slice(0, 3).join('; ').slice(0, 300)
+  }
 }
 
 function proximaTarefa(tarefas: Tarefa[], hoje: string): string {

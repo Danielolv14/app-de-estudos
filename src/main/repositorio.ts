@@ -1,11 +1,33 @@
 // Acesso aos dados: converte as linhas do SQLite (snake_case) nos tipos do app (camelCase).
 import type { Banco, Linha } from './banco'
-import type { Config, EstadoLembrete, Evento, Materia, Sessao, SessaoAtiva, Tarefa, TipoEvento } from '@shared/tipos'
-import { CONFIG_PADRAO } from '@shared/padroes'
+import type {
+  Config,
+  Correcao,
+  EstadoLembrete,
+  Evento,
+  LeituraPlano,
+  Materia,
+  PropostaPlano,
+  ProvaSimulado,
+  Sessao,
+  SessaoAtiva,
+  Simulado,
+  Tarefa,
+  TipoEvento,
+  TipoTrabalhoIa
+} from '@shared/tipos'
+import { CONFIG_PADRAO, SEMESTRE_PADRAO } from '@shared/padroes'
 
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v))
 
-const paraMateria = (l: Linha): Materia => ({ id: Number(l.id), nome: String(l.nome), cor: String(l.cor) })
+const paraMateria = (l: Linha): Materia => ({
+  id: Number(l.id),
+  nome: String(l.nome),
+  cor: String(l.cor),
+  arquivada: Number(l.arquivada ?? 0) === 1,
+  semestre: String(l.semestre ?? ''),
+  bibliografia: String(l.bibliografia ?? '')
+})
 
 const paraTarefa = (l: Linha): Tarefa => ({
   id: Number(l.id),
@@ -26,7 +48,8 @@ const paraEvento = (l: Linha): Evento => ({
   tipo: String(l.tipo) as TipoEvento,
   pontos: num(l.pontos),
   meta: num(l.meta),
-  nota: num(l.nota)
+  nota: num(l.nota),
+  conteudo: String(l.conteudo ?? '')
 })
 
 const paraSessao = (l: Linha): Sessao => ({
@@ -43,8 +66,44 @@ const paraSessao = (l: Linha): Sessao => ({
   checkinTravou: String(l.checkin_travou ?? '')
 })
 
+const json = <T>(v: unknown, padrao: T): T => {
+  if (v === null || v === undefined || v === '') return padrao
+  try {
+    return JSON.parse(String(v)) as T
+  } catch {
+    return padrao
+  }
+}
+
+const paraSimulado = (l: Linha): Simulado => ({
+  id: Number(l.id),
+  materiaId: num(l.materia_id),
+  eventoId: num(l.evento_id),
+  conteudos: String(l.conteudos ?? ''),
+  duracaoMin: Number(l.duracao_min),
+  criadoEm: Number(l.criado_em),
+  prova: json<ProvaSimulado>(l.prova, { titulo: '', instrucoes: '', questoes: [] }),
+  iniciadoEm: num(l.iniciado_em),
+  terminadoEm: num(l.terminado_em),
+  sessaoId: num(l.sessao_id),
+  fotos: json<string[]>(l.fotos, []),
+  correcao: json<Correcao | null>(l.correcao, null)
+})
+
 export type NovaTarefa = Omit<Tarefa, 'id' | 'feita' | 'ordem'> & { id?: number; feita?: boolean; ordem?: number }
-export type NovoEvento = Omit<Evento, 'id'> & { id?: number }
+/** O conteúdo é opcional para quem salva (nem toda tela manda). */
+export type NovoEvento = Omit<Evento, 'id' | 'conteudo'> & { id?: number; conteudo?: string }
+export type NovaMateria = { id?: number; nome: string; cor: string; bibliografia?: string }
+export type UsoIa = {
+  quando: number
+  tipo: TipoTrabalhoIa
+  modelo: string
+  segundos: number
+  tokensEntrada: number
+  tokensSaida: number
+  ok: boolean
+  erro: string
+}
 
 export class Repositorio {
   constructor(readonly banco: Banco) {}
@@ -54,12 +113,26 @@ export class Repositorio {
     return this.banco.todos('SELECT * FROM materias ORDER BY id').map(paraMateria)
   }
 
-  salvarMateria(m: Omit<Materia, 'id'> & { id?: number }): number {
+  materiasAtivas(): Materia[] {
+    return this.materias().filter((m) => !m.arquivada)
+  }
+
+  salvarMateria(m: NovaMateria): number {
     if (m.id) {
       this.banco.executar('UPDATE materias SET nome = ?, cor = ? WHERE id = ?', [m.nome, m.cor, m.id])
+      if (m.bibliografia !== undefined) this.banco.executar('UPDATE materias SET bibliografia = ? WHERE id = ?', [m.bibliografia, m.id])
       return m.id
     }
-    return this.banco.executar('INSERT INTO materias (nome, cor) VALUES (?, ?)', [m.nome, m.cor])
+    return this.banco.executar('INSERT INTO materias (nome, cor, semestre, bibliografia) VALUES (?, ?, ?, ?)', [
+      m.nome,
+      m.cor,
+      this.semestre(),
+      m.bibliografia ?? ''
+    ])
+  }
+
+  arquivarMateria(id: number, arquivada: boolean): void {
+    this.banco.executar('UPDATE materias SET arquivada = ? WHERE id = ?', [arquivada ? 1 : 0, id])
   }
 
   removerMateria(id: number): void {
@@ -120,11 +193,12 @@ export class Repositorio {
         'UPDATE eventos SET materia_id = ?, data = ?, titulo = ?, tipo = ?, pontos = ?, meta = ?, nota = ? WHERE id = ?',
         [...valores, e.id]
       )
+      if (e.conteudo !== undefined) this.banco.executar('UPDATE eventos SET conteudo = ? WHERE id = ?', [e.conteudo, e.id])
       return e.id
     }
     return this.banco.executar(
-      'INSERT INTO eventos (materia_id, data, titulo, tipo, pontos, meta, nota) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      valores
+      'INSERT INTO eventos (materia_id, data, titulo, tipo, pontos, meta, nota, conteudo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [...valores, e.conteudo ?? '']
     )
   }
 
@@ -154,6 +228,110 @@ export class Repositorio {
       'UPDATE sessoes SET fim = ?, estudo_seg = ?, pausa_seg = ?, antes_da_meta = ?, checkin_feito = ?, checkin_travou = ? WHERE id = ?',
       [f.fim, f.estudoSeg, f.pausaSeg, f.antesDaMeta ? 1 : 0, f.checkinFeito ?? '', f.checkinTravou ?? '', id]
     )
+  }
+
+  // ---------- Simulados ----------
+  simulados(): Simulado[] {
+    return this.banco.todos('SELECT * FROM simulados ORDER BY criado_em DESC, id DESC').map(paraSimulado)
+  }
+
+  simulado(id: number): Simulado | undefined {
+    const l = this.banco.um('SELECT * FROM simulados WHERE id = ?', [id])
+    return l ? paraSimulado(l) : undefined
+  }
+
+  criarSimulado(s: Omit<Simulado, 'id' | 'iniciadoEm' | 'terminadoEm' | 'sessaoId' | 'fotos' | 'correcao'>): number {
+    return this.banco.executar(
+      'INSERT INTO simulados (materia_id, evento_id, conteudos, duracao_min, criado_em, prova) VALUES (?, ?, ?, ?, ?, ?)',
+      [s.materiaId, s.eventoId, s.conteudos, s.duracaoMin, s.criadoEm, JSON.stringify(s.prova)]
+    )
+  }
+
+  atualizarSimulado(
+    id: number,
+    p: Partial<Pick<Simulado, 'iniciadoEm' | 'terminadoEm' | 'sessaoId' | 'fotos' | 'correcao'>>
+  ): void {
+    const colunas: Record<string, string> = {
+      iniciadoEm: 'iniciado_em',
+      terminadoEm: 'terminado_em',
+      sessaoId: 'sessao_id',
+      fotos: 'fotos',
+      correcao: 'correcao'
+    }
+    for (const [campo, valor] of Object.entries(p)) {
+      const comoTexto = campo === 'fotos' || campo === 'correcao'
+      const v = comoTexto ? (valor === null ? null : JSON.stringify(valor)) : (valor as number | null)
+      this.banco.executar(`UPDATE simulados SET ${colunas[campo]} = ? WHERE id = ?`, [v, id])
+    }
+  }
+
+  removerSimulado(id: number): void {
+    this.banco.executar('DELETE FROM simulados WHERE id = ?', [id])
+  }
+
+  // ---------- Uso da IA ----------
+  registrarUsoIa(u: UsoIa): void {
+    this.banco.executar(
+      'INSERT INTO ia_usos (quando, tipo, modelo, segundos, tokens_entrada, tokens_saida, ok, erro) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [u.quando, u.tipo, u.modelo, u.segundos, u.tokensEntrada, u.tokensSaida, u.ok ? 1 : 0, u.erro]
+    )
+  }
+
+  /** Usos que deram certo desde `desde`, e a soma dos tokens. */
+  usoIaDesde(desde: number): { usos: number; tokens: number } {
+    const l = this.banco.um(
+      'SELECT COUNT(*) AS n, COALESCE(SUM(tokens_entrada + tokens_saida), 0) AS t FROM ia_usos WHERE ok = 1 AND quando >= ?',
+      [desde]
+    )
+    return { usos: Number(l?.n ?? 0), tokens: Number(l?.t ?? 0) }
+  }
+
+  // ---------- Semestre ----------
+  semestre(): string {
+    return this.ler<string>('semestre') ?? SEMESTRE_PADRAO
+  }
+
+  /**
+   * Fecha o semestre: as matérias de agora são arquivadas (o histórico continua) e o app passa a usar o novo nome.
+   * Com `apagarPendentes`, as tarefas não feitas dessas matérias saem do plano (senão ficariam atrasadas para sempre).
+   */
+  virarSemestre(novo: string, apagarPendentes: boolean): { arquivadas: number; apagadas: number } {
+    let arquivadas = 0
+    let apagadas = 0
+    this.banco.transacao(() => {
+      const ids = this.materiasAtivas().map((m) => m.id)
+      arquivadas = ids.length
+      if (ids.length > 0) {
+        const marcas = ids.map(() => '?').join(', ')
+        if (apagarPendentes) {
+          apagadas = Number(this.banco.um(`SELECT COUNT(*) AS n FROM tarefas WHERE feita = 0 AND materia_id IN (${marcas})`, ids)?.n ?? 0)
+          this.banco.executar(`DELETE FROM tarefas WHERE feita = 0 AND materia_id IN (${marcas})`, ids)
+        }
+        this.banco.executar(`UPDATE materias SET arquivada = 1 WHERE id IN (${marcas})`, ids)
+      }
+      const c = this.config()
+      this.salvarConfig({ ...c, semanaPadrao: c.semanaPadrao.filter((b) => !ids.includes(b.materiaId)) })
+      this.gravar('semestre', novo)
+      this.gravar('proposta_plano', null)
+    })
+    return { arquivadas, apagadas }
+  }
+
+  // ---------- Trabalhos da IA esperando revisão ----------
+  leituraPlano(): LeituraPlano | null {
+    return this.ler<LeituraPlano>('leitura_plano')
+  }
+
+  salvarLeituraPlano(l: LeituraPlano | null): void {
+    this.gravar('leitura_plano', l)
+  }
+
+  propostaPlano(): PropostaPlano | null {
+    return this.ler<PropostaPlano>('proposta_plano')
+  }
+
+  salvarPropostaPlano(p: PropostaPlano | null): void {
+    this.gravar('proposta_plano', p)
   }
 
   // ---------- Metas ajustadas à mão ----------

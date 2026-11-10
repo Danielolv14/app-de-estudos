@@ -1,6 +1,8 @@
 // Gera a nota de resumo que o app grava no vault do Obsidian.
-import type { Evento, Materia, Sessao, SessaoAtiva, Tarefa } from './tipos'
+import type { Evento, Materia, Sessao, SessaoAtiva, Simulado, Tarefa } from './tipos'
+import { semanas, sequencia } from './constancia'
 import {
+  dataLocal,
   diaMes,
   estudadoNoDia,
   formatarDuracao,
@@ -22,6 +24,7 @@ export type DadosResumo = {
   sessoes: Sessao[]
   metasDia: Record<string, number>
   ativa: SessaoAtiva | null
+  simulados?: Simulado[]
 }
 
 const celula = (s: string) => s.replace(/\|/g, '/').replace(/\r?\n/g, ' ')
@@ -139,6 +142,29 @@ export function gerarResumo(d: DadosResumo): string {
       )
     }
   }
+
+  // Simulados
+  const corrigidos = (d.simulados ?? []).filter((s) => s.correcao).slice(0, 5)
+  if (corrigidos.length > 0) {
+    out.push('', '## Simulados (correção da IA, nota estimada)')
+    for (const s of corrigidos) {
+      const c = s.correcao!
+      out.push(`- **${dia(dataLocal(s.criadoEm))}, ${materia(s.materiaId)}:** ${formatarNota(c.nota)} de ${formatarNota(c.total)}.${c.resumo ? ` ${celula(c.resumo)}` : ''}`)
+      if (c.pontosFracos.length > 0) out.push(`  - Pontos fracos: ${c.pontosFracos.map(celula).join('; ')}.`)
+    }
+  }
+
+  // Constância
+  const seq = sequencia(d)
+  const ultimas4 = semanas(d, 4)
+  out.push('', '## Constância')
+  out.push(`Sequência de dias com a meta cumprida: ${seq.atual} (recorde: ${seq.recorde}). Dia sem meta não quebra a sequência.`, '')
+  out.push('| Semana | Planejado | Feito | Dias cumpridos |', '|---|---|---|---|')
+  for (const w of ultimas4)
+    out.push(
+      `| ${diaMes(w.inicio)} a ${diaMes(somarDias(w.inicio, 6))} | ${formatarDuracao(w.planejadoMin * 60_000)} | ${formatarDuracao(w.feitoMs)} | ${w.diasCumpridos} de ${w.diasComMeta} |`
+    )
+
   out.push('', '## Ver também', '[[Rotina de estudos (fim de 2026-2)]] · [[App de Estudos]]', '')
   return out.join('\n')
 }

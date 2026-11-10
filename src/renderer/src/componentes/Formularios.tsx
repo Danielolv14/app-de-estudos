@@ -4,6 +4,9 @@ import { Modal } from './Basicos'
 
 const numeroOuNulo = (s: string): number | null => (s.trim() === '' ? null : Number(s.replace(',', '.')))
 
+/** Matérias que aparecem no seletor: as ativas, mais a do item, se ela já foi arquivada. */
+const doSeletor = (materias: Materia[], atual: number | null | undefined) => materias.filter((m) => !m.arquivada || m.id === atual)
+
 export function FormTarefa(p: {
   materias: Materia[]
   tarefa?: Tarefa
@@ -11,8 +14,9 @@ export function FormTarefa(p: {
   aoFechar: () => void
 }) {
   const t = p.tarefa
+  const materias = doSeletor(p.materias, t?.materiaId)
   const [data, setData] = useState(t?.data ?? p.dataInicial)
-  const [materiaId, setMateriaId] = useState<number | null>(t?.materiaId ?? p.materias[0]?.id ?? null)
+  const [materiaId, setMateriaId] = useState<number | null>(t ? t.materiaId : (materias[0]?.id ?? null))
   const [titulo, setTitulo] = useState(t?.titulo ?? '')
   const [detalhe, setDetalhe] = useState(t?.detalhe ?? '')
   const [horas, setHoras] = useState(String(Math.floor((t?.minutos ?? 120) / 60)))
@@ -54,7 +58,7 @@ export function FormTarefa(p: {
           <label>
             Matéria
             <select className="seletor" value={materiaId ?? ''} onChange={(e) => setMateriaId(e.target.value ? Number(e.target.value) : null)}>
-              {p.materias.map((m) => (
+              {materias.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.nome}
                 </option>
@@ -109,17 +113,21 @@ export function FormEvento(p: {
   dataInicial: string
   materiaInicial?: number | null
   tipoInicial?: TipoEvento
+  /** A avaliação está ligada ao Canvas: a data, o valor e a nota vêm de lá. */
+  doCanvas?: boolean
   aoFechar: () => void
 }) {
   const ev = p.evento
+  const materias = doSeletor(p.materias, ev?.materiaId)
   const texto = (n: number | null | undefined) => (n === null || n === undefined ? '' : String(n).replace('.', ','))
   const [data, setData] = useState(ev?.data ?? p.dataInicial)
   const [semData, setSemData] = useState(ev ? ev.data === null : false)
   const [titulo, setTitulo] = useState(ev?.titulo ?? '')
   const [tipo, setTipo] = useState<TipoEvento>(ev?.tipo ?? p.tipoInicial ?? 'prova')
   const [materiaId, setMateriaId] = useState<number | null>(
-    ev ? ev.materiaId : p.materiaInicial !== undefined ? p.materiaInicial : (p.materias[0]?.id ?? null)
+    ev ? ev.materiaId : p.materiaInicial !== undefined ? p.materiaInicial : (materias[0]?.id ?? null)
   )
+  const [conteudo, setConteudo] = useState(ev?.conteudo ?? '')
   const [pontos, setPontos] = useState(texto(ev?.pontos))
   const [meta, setMeta] = useState(texto(ev?.meta))
   const [nota, setNota] = useState(texto(ev?.nota))
@@ -137,7 +145,8 @@ export function FormEvento(p: {
       materiaId,
       pontos: avaliacao ? numeroOuNulo(pontos) : null,
       meta: avaliacao ? numeroOuNulo(meta) : null,
-      nota: avaliacao ? numeroOuNulo(nota) : null
+      nota: avaliacao ? numeroOuNulo(nota) : null,
+      conteudo: tipo === 'outro' ? '' : conteudo.trim()
     })
     p.aoFechar()
   }
@@ -180,7 +189,7 @@ export function FormEvento(p: {
         <label>
           Matéria
           <select className="seletor" value={materiaId ?? ''} onChange={(e) => setMateriaId(e.target.value ? Number(e.target.value) : null)}>
-            {p.materias.map((m) => (
+            {materias.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.nome}
               </option>
@@ -188,6 +197,18 @@ export function FormEvento(p: {
             <option value="">Nenhuma</option>
           </select>
         </label>
+        {tipo !== 'outro' && (
+          <label>
+            {avaliacao ? 'O que cai (o simulado e o replanejamento usam)' : 'Assunto da aula'}
+            <textarea
+              className="campo-area"
+              rows={2}
+              value={conteudo}
+              onChange={(e) => setConteudo(e.target.value)}
+              placeholder={avaliacao ? 'Ex.: 3.9 taxas relacionadas, 4.7 otimização' : 'Ex.: Unid. 5, arquiteturas paralelas'}
+            />
+          </label>
+        )}
         {avaliacao && (
           <label className="opcao">
             <input type="checkbox" className="marcar" checked={semData} onChange={(e) => setSemData(e.target.checked)} />
@@ -214,6 +235,11 @@ export function FormEvento(p: {
           <p className="form__dica">
             Deixe a meta vazia para o app calcular quanto você precisa tirar para chegar a 60. A reavaliação entra no lugar da menor nota
             de prova.
+          </p>
+        )}
+        {p.doCanvas && (
+          <p className="form__dica">
+            Esta avaliação vem do Canvas: a data, o valor e a nota são atualizados de lá. O nome, a meta e o que cai ficam como você deixar.
           </p>
         )}
         <div className="form__botoes">

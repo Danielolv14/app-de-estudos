@@ -7,12 +7,21 @@ import type { SituacaoTrava } from '../../../preload/api'
 import { Led, Modal } from './Basicos'
 import { IconeCadeado } from './Icones'
 
-export function Encerrar({ tarefa, aoFechar }: { tarefa: Tarefa | undefined; aoFechar: () => void }) {
+export function Encerrar({
+  tarefa,
+  sugestao,
+  aoFechar
+}: {
+  tarefa: Tarefa | undefined
+  /** Check-in já preenchido (ex.: com o resultado do simulado feito na sessão). */
+  sugestao?: { feito: string; travou: string }
+  aoFechar: () => void
+}) {
   const [trava, setTrava] = useState<SituacaoTrava | null>(null)
   const [frase, setFrase] = useState('')
   const [feita, setFeita] = useState(false)
-  const [feito, setFeito] = useState('')
-  const [travou, setTravou] = useState('')
+  const [feito, setFeito] = useState(sugestao?.feito ?? '')
+  const [travou, setTravou] = useState(sugestao?.travou ?? '')
   const [erro, setErro] = useState('')
 
   useEffect(() => {

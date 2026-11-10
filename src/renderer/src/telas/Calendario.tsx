@@ -4,6 +4,8 @@ import { dataLocal, diaMes, diasAte, formatarDuracao, metaDoDia, nomeDiaSemana, 
 import { formatarNota, metaDe, metasAutomaticas } from '@shared/notas'
 import { estiloMateria, nomeDe } from '../componentes/Basicos'
 import { FormEvento } from '../componentes/Formularios'
+import { ImportarPlano, RevisaoPlano } from '../componentes/Planejamento'
+import { RevisaoDoCanvas } from '../componentes/Canvas'
 import { IconeMais, IconeSeta } from '../componentes/Icones'
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
@@ -16,6 +18,7 @@ export function Calendario({ estado }: { estado: Estado }) {
     return new Date(d.getFullYear(), d.getMonth(), 1)
   })
   const [editando, setEditando] = useState<{ evento?: Evento; data: string } | null>(null)
+  const [importando, setImportando] = useState(false)
 
   // Grade de 6 semanas começando na segunda-feira.
   const primeiro = new Date(mes)
@@ -37,11 +40,25 @@ export function Calendario({ estado }: { estado: Estado }) {
           <h1>Calendário</h1>
           <p>Provas, atividades e aulas. Clique num dia para adicionar.</p>
         </div>
-        <button className="tecla tecla--ambar" onClick={() => setEditando({ data: hoje })}>
-          <IconeMais />
-          Adicionar ao calendário
-        </button>
+        <div className="titulo-tela__botoes">
+          {estado.canvas.conectado && (
+            <button className="tecla" disabled={estado.canvas.sincronizando} onClick={() => void window.api.sincronizarCanvas()}>
+              {estado.canvas.sincronizando ? 'Buscando no Canvas...' : 'Atualizar do Canvas'}
+            </button>
+          )}
+          <button className="tecla" onClick={() => setImportando(true)} disabled={!!estado.ia.trabalho || !estado.ia.claude}>
+            {estado.ia.trabalho?.tipo === 'ler-plano' ? 'Lendo o plano...' : 'Importar plano de ensino'}
+          </button>
+          <button className="tecla tecla--ambar" onClick={() => setEditando({ data: hoje })}>
+            <IconeMais />
+            Adicionar ao calendário
+          </button>
+        </div>
       </div>
+
+      {estado.revisaoCanvas && <RevisaoDoCanvas key={estado.revisaoCanvas.criadaEm} estado={estado} />}
+      {estado.leituraPlano && <RevisaoPlano key={estado.leituraPlano.lidaEm} estado={estado} />}
+      {importando && <ImportarPlano estado={estado} aoFechar={() => setImportando(false)} />}
 
       <div className="calendario">
         <section>
@@ -131,7 +148,15 @@ export function Calendario({ estado }: { estado: Estado }) {
         </aside>
       </div>
 
-      {editando && <FormEvento materias={materias} evento={editando.evento} dataInicial={editando.data} aoFechar={() => setEditando(null)} />}
+      {editando && (
+        <FormEvento
+          materias={materias}
+          evento={editando.evento}
+          dataInicial={editando.data}
+          doCanvas={!!editando.evento && estado.canvas.eventosDoCanvas.includes(editando.evento.id)}
+          aoFechar={() => setEditando(null)}
+        />
+      )}
     </div>
   )
 }

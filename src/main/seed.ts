@@ -2,6 +2,7 @@
 // Só roda quando o banco está vazio. As estimativas de tempo são um chute inicial e podem ser ajustadas na tela Plano.
 import type { Repositorio } from './repositorio'
 import type { TipoEvento } from '@shared/tipos'
+import { SEMESTRE_PADRAO } from '@shared/padroes'
 
 const RECEITA =
   'Releia a receita do tema (10 min), resolva sem olhar a resposta e use os últimos 15 min para conferir no gabarito e anotar os erros.'
@@ -70,10 +71,59 @@ const NOTAS: Record<'Cálculo' | 'Arquitetura', Nova[]> = {
   ]
 }
 
-/** v1.1: as notas que já saíram, e as metas das provas passam a ser calculadas pelo app. */
 function atualizarDados(repo: Repositorio): void {
-  const versao = repo.lerKv<number>('versao_dados') ?? 1
-  if (versao >= 2) return
+  if ((repo.lerKv<number>('versao_dados') ?? 1) < 2) dadosV2(repo)
+  if ((repo.lerKv<number>('versao_dados') ?? 1) < 3) dadosV3(repo)
+}
+
+// Conteúdo de cada avaliação, das notas "Cálculo 1 (2026-2)" e "Arquitetura de Computadores (2026-2)" do vault.
+const CALCULO_AA2_P3 =
+  "3.5 derivação implícita, 3.9 taxas relacionadas, 4.1 extremos, 4.3 concavidade, 4.4 L'Hôpital, 4.5 esboço de gráfico e 4.7 otimização"
+const CONTEUDOS: [materia: string, titulo: string, conteudo: string][] = [
+  ['Cálculo', 'Atividade avaliativa 2 de Cálculo', CALCULO_AA2_P3],
+  ['Cálculo', 'Prova 3 de Cálculo', CALCULO_AA2_P3],
+  ['Arquitetura', 'Prova 3 de Arquitetura', 'Unid. 4: Linguagem de Montagem. Unid. 5: Modelos de Arquiteturas Sequenciais e Paralelas'],
+  [
+    'Arquitetura',
+    'Reposição da Prova 2 de Arquitetura',
+    'Unid. 2: Lei de Amdahl e equação de performance da CPU. Unid. 3: memória (introdução, cache e memória virtual)'
+  ]
+]
+
+/**
+ * v1.2: o conteúdo de cada avaliação (o simulado usa), o semestre das matérias e a semana padrão
+ * tirada do plano de 2026/2 (Cálculo de terça a quinta, Arquitetura na sexta, 2 h por dia).
+ */
+function dadosV3(repo: Repositorio): void {
+  repo.banco.transacao(() => {
+    const materias = repo.materias()
+    for (const m of materias.filter((x) => !x.semestre)) repo.banco.executar('UPDATE materias SET semestre = ? WHERE id = ?', [SEMESTRE_PADRAO, m.id])
+    const eventos = repo.eventos()
+    for (const [nome, titulo, conteudo] of CONTEUDOS) {
+      const materia = materias.find((m) => m.nome === nome)
+      const e = eventos.find((x) => x.materiaId === materia?.id && x.titulo === titulo && !x.conteudo)
+      if (e) repo.salvarEvento({ ...e, conteudo })
+    }
+    const config = repo.config()
+    const calc = materias.find((m) => m.nome === 'Cálculo')
+    const arq = materias.find((m) => m.nome === 'Arquitetura')
+    if (config.semanaPadrao.length === 0 && calc && arq) {
+      repo.salvarConfig({
+        ...config,
+        semanaPadrao: [
+          { dia: 2, materiaId: calc.id, minutos: 120 },
+          { dia: 3, materiaId: calc.id, minutos: 120 },
+          { dia: 4, materiaId: calc.id, minutos: 120 },
+          { dia: 5, materiaId: arq.id, minutos: 120 }
+        ]
+      })
+    }
+    repo.gravarKv('versao_dados', 3)
+  })
+}
+
+/** v1.1: as notas que já saíram, e as metas das provas passam a ser calculadas pelo app. */
+function dadosV2(repo: Repositorio): void {
   repo.banco.transacao(() => {
     const eventos = repo.eventos()
     for (const nome of ['Cálculo', 'Arquitetura'] as const) {
