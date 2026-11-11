@@ -11,6 +11,7 @@ import {
   powerSaveBlocker,
   safeStorage,
   screen,
+  session,
   Tray
 } from 'electron'
 import { copyFileSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
@@ -43,6 +44,7 @@ import { GerenciadorSessao } from './sessao'
 import { ControleBloqueio, desinstalarServico, instalarServico, nomeAmigavel, statusBloqueio } from './bloqueio'
 import { Lembretes } from './lembrete'
 import { agora, definirAgora } from './relogio'
+import { gravarDemo } from './video'
 
 // ---------- Opções de linha de comando (para testes) ----------
 const arg = (nome: string): string | undefined =>
@@ -50,7 +52,10 @@ const arg = (nome: string): string | undefined =>
 const tem = (nome: string): boolean => process.argv.includes(`--${nome}`)
 
 const pastaCaptura = arg('captura')
-const modoTeste = !!pastaCaptura || tem('sem-bloqueio')
+const arquivoVideo = arg('video')
+const modoTeste = !!pastaCaptura || !!arquivoVideo || tem('sem-bloqueio')
+// O vídeo sai em 1920x1080: janela de 1280x720 com escala 1,5.
+if (arquivoVideo) app.commandLine.appendSwitch('force-device-scale-factor', '1.5')
 if (arg('dados')) app.setPath('userData', arg('dados')!)
 if (arg('agora')) definirAgora(arg('agora')!)
 
@@ -642,7 +647,48 @@ function iniciarRotinas(): void {
   }
 }
 
-// ---------- Capturas de tela (teste da interface) ----------
+// ---------- Capturas de tela e vídeo (teste da interface e divulgação) ----------
+/** Sessão começada há 1h12 (6 min de pausa) e os dados de mentira da IA, do Canvas e da aula. */
+async function prepararDemonstracao(comSessao: boolean, comIa: boolean): Promise<void> {
+  const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms))
+  if (comSessao) {
+    const hoje = dataLocal(agora())
+    const t = repo.tarefas().find((x) => x.data === hoje && !x.feita)
+    sessao.iniciar(t?.id ?? null)
+    const a = repo.sessaoAtiva()!
+    repo.salvarSessaoAtiva({ ...a, inicio: a.inicio - 78 * 60_000, estudoMs: 72 * 60_000, pausaMs: 6 * 60_000, marco: agora() })
+    mudou()
+    await esperar(800)
+  }
+  if (comIa) {
+    dadosFalsosDeIa(repo, agora())
+    dadosFalsosDeCanvas(repo)
+    dadosFalsosDeAula(repo, agora())
+    canvas.guardarArquivos(101, ARQUIVOS_FALSOS_CANVAS)
+    mudou()
+    await esperar(400)
+  }
+}
+
+async function videoDemo(arquivo: string): Promise<void> {
+  const w = principal!
+  w.webContents.setBackgroundThrottling(false)
+  w.setContentSize(1280, 720)
+  w.center()
+  w.show()
+  await new Promise((r) => setTimeout(r, 1500))
+  await prepararDemonstracao(true, true)
+  mini?.hide()
+  const tipo = await gravarDemo(w, arquivo, {
+    navegar: (tela) => w.webContents.send('navegar', tela),
+    abrirTrava: () => w.webContents.send('abrir-trava')
+  })
+  console.log(`vídeo gravado (${tipo}): ${arquivo}`)
+  saindo = true
+  repo.banco.fechar()
+  app.exit(0)
+}
+
 async function capturar(pasta: string): Promise<void> {
   mkdirSync(pasta, { recursive: true })
   const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -652,24 +698,7 @@ async function capturar(pasta: string): Promise<void> {
   const foto = async (wc: Electron.WebContents) => (await wc.capturePage(undefined, { stayAwake: true })).toPNG()
   w.show()
   await esperar(tem('captura-lembrete') ? 6500 : 1500)
-  if (tem('captura-sessao')) {
-    const hoje = dataLocal(agora())
-    const t = repo.tarefas().find((x) => x.data === hoje && !x.feita)
-    sessao.iniciar(t?.id ?? null)
-    // Começou há 1h12, com 6 min de pausa.
-    const a = repo.sessaoAtiva()!
-    repo.salvarSessaoAtiva({ ...a, inicio: a.inicio - 78 * 60_000, estudoMs: 72 * 60_000, pausaMs: 6 * 60_000, marco: agora() })
-    mudou()
-    await esperar(800)
-  }
-  if (tem('captura-ia')) {
-    dadosFalsosDeIa(repo, agora())
-    dadosFalsosDeCanvas(repo)
-    dadosFalsosDeAula(repo, agora())
-    canvas.guardarArquivos(101, ARQUIVOS_FALSOS_CANVAS)
-    mudou()
-    await esperar(400)
-  }
+  await prepararDemonstracao(tem('captura-sessao'), tem('captura-ia'))
   const js = (codigo: string) => w.webContents.executeJavaScript(codigo)
   for (const tela of ['foco', 'aula', 'plano', 'calendario', 'notas', 'simulado', 'constancia', 'ajustes']) {
     w.webContents.send('navegar', tela)
@@ -813,7 +842,7 @@ app.whenReady().then(async () => {
   })
 
   registrarIpc()
-  criarPrincipal(!tem('oculto') || !!pastaCaptura)
+  criarPrincipal(!tem('oculto') || !!pastaCaptura || !!arquivoVideo)
   criarMini()
 
   bandeja = new Tray(nativeImage.createFromPath(recurso('bandeja.png')))
@@ -827,4 +856,9 @@ app.whenReady().then(async () => {
   iniciarRotinas()
   escreverResumoDepois()
   if (pastaCaptura) principal!.webContents.once('did-finish-load', () => void capturar(pastaCaptura))
+  if (arquivoVideo) {
+    // A gravação pede a própria janela: sem seletor de tela.
+    session.defaultSession.setDisplayMediaRequestHandler((pedido, responder) => responder(pedido.frame ? { video: pedido.frame } : {}))
+    principal!.webContents.once('did-finish-load', () => void videoDemo(arquivoVideo))
+  }
 })
