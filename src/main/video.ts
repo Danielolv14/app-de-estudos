@@ -1,5 +1,5 @@
 // Vídeo de demonstração do app (para divulgação), só com --video=<arquivo>. Roda no modo de teste, com os dados
-// de mentira das capturas, e grava a própria janela com o MediaRecorder do Chromium (sem programa de fora).
+// fictícios (demo-ficticia.ts), e grava a própria janela com o MediaRecorder do Chromium (sem programa de fora).
 // O arquivo sai em WebM ou MP4, conforme o Chromium deixar; o ffmpeg converte e põe a capa (README, "Vídeo").
 import type { BrowserWindow } from 'electron'
 import { createWriteStream } from 'node:fs'
@@ -37,12 +37,13 @@ export async function gravarDemo(w: BrowserWindow, arquivo: string, acoes: Acoes
     await esperar(260)
   }
 
-  // Rola a área de conteúdo até uma fração da altura, com aceleração suave.
-  const rolar = (fracao: number, ms: number): Promise<void> =>
+  // Rola a área de conteúdo até um ponto (expressão JS sobre `c`, a área), com aceleração suave.
+  const rolarPara = (alvo: string, ms: number): Promise<void> =>
     js(`new Promise((pronto) => {
       const c = document.querySelector('.conteudo')
       if (!c) return pronto()
-      const de = c.scrollTop, ate = (c.scrollHeight - c.clientHeight) * ${fracao}, t0 = performance.now()
+      const max = c.scrollHeight - c.clientHeight
+      const de = c.scrollTop, ate = Math.max(0, Math.min(max, ${alvo})), t0 = performance.now()
       const passo = (t) => {
         const x = Math.min(1, (t - t0) / ${ms}), e = x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2
         c.scrollTop = de + (ate - de) * e
@@ -50,6 +51,11 @@ export async function gravarDemo(w: BrowserWindow, arquivo: string, acoes: Acoes
       }
       requestAnimationFrame(passo)
     })`)
+  const rolar = (fracao: number, ms: number): Promise<void> => rolarPara(`max * ${fracao}`, ms)
+  const rolarPx = (px: number, ms: number): Promise<void> => rolarPara(`c.scrollTop + ${px}`, ms)
+  // Leva o elemento achado por `achar` (expressão JS) até `margem` px do topo da área.
+  const rolarAte = (achar: string, margem: number, ms: number): Promise<void> =>
+    rolarPara(`(() => { const el = ${achar}; return el ? el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - ${margem} : c.scrollTop })()`, ms)
 
   const digitar = async (texto: string, msPorLetra: number): Promise<void> => {
     for (const letra of texto) {
@@ -75,8 +81,8 @@ export async function gravarDemo(w: BrowserWindow, arquivo: string, acoes: Acoes
     `(async () => {
       const tipos = ['video/mp4;codecs=avc1.640028', 'video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm']
       const mime = tipos.find((t) => MediaRecorder.isTypeSupported(t))
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
-      const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 12_000_000 })
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 60, max: 60 }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
+      const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 16_000_000 })
       window.__partes = []
       rec.ondataavailable = (e) => { if (e.data.size) window.__partes.push(e.data) }
       rec.start(500)
@@ -87,40 +93,63 @@ export async function gravarDemo(w: BrowserWindow, arquivo: string, acoes: Acoes
   )
   await esperar(600)
 
-  // ---- Roteiro ----
+  // ---- Roteiro (velocidade normal; os dados são os fictícios de demo-ficticia.ts) ----
+  const painel = (materia: string): string =>
+    `[...document.querySelectorAll('.boletim')].find((s) => s.textContent.includes(${JSON.stringify(materia)}))`
+
   await cena('foco', 'Uma sessão de estudo ligada à tarefa do dia')
-  await esperar(3200)
-  await legenda('Enquanto ela roda, Instagram, WhatsApp Web e jogos não abrem')
-  await esperar(3300)
+  await esperar(3400)
 
   await legenda(null)
   acoes.abrirTrava()
   await esperar(450)
   await legenda('Parar antes da meta? Só digitando a frase (colar não funciona)')
   const frase = await js<string>("document.querySelector('.frase-alvo')?.textContent ?? ''")
-  await digitar(frase.slice(0, 64), 38)
-  await esperar(900)
+  await digitar(frase.slice(0, 64), 42)
+  await esperar(1000)
   await legenda(null)
   await clicar("[...document.querySelectorAll('.modal__botoes button')].find((b) => b.textContent.includes('Voltar a estudar'))?.click()")
 
-  await cena('calendario', 'Ligado ao Canvas da PUC: provas, atividades e notas chegam sozinhas')
-  await esperar(1500)
-  await rolar(0.1, 2200)
-  await esperar(1200)
+  await cena('ajustes', 'Enquanto a sessão roda, Instagram, WhatsApp Web e jogos ficam bloqueados')
+  await esperar(1400)
+  await rolarPx(230, 1800)
+  await esperar(2400)
+
+  await cena('calendario', 'Ligado ao Canvas: provas, atividades e notas chegam sozinhas')
+  await esperar(1600)
+  await rolar(0.12, 2200)
+  await esperar(1400)
+
+  await cena('notas', 'Quanto falta para chegar a 60 em cada matéria')
+  await esperar(2800)
+  await rolarAte(painel('Sistemas Distribuídos'), 20, 1800)
+  await esperar(500)
+  await legenda('Lançou a nota? A conta refaz na hora')
+  await esperar(700)
+  const campo = `document.querySelector('input[aria-label="Nota que tirou em Prova 2 de Sistemas Distribuídos"]')`
+  await clicar(`${campo}?.focus()`)
+  await esperar(500)
+  await digitar('24', 320)
+  await esperar(450)
+  await clicar(`${campo}?.blur()`)
+  await esperar(2600)
+  await rolarAte(painel('Teste de Software'), 20, 1800)
+  await legenda('Matéria garantida aparece como aprovada')
+  await esperar(2600)
 
   await cena('plano', 'A IA replaneja a semana, e nada entra sem eu aprovar')
-  await esperar(3800)
+  await esperar(4000)
 
   await cena('aula', 'Uma aula montada pela IA a partir dos PDFs da matéria')
-  await esperar(1300)
+  await esperar(1400)
   await rolar(0.45, 3200)
   await clicar(
     "const q = [...document.querySelectorAll('.exercicio')][1]; [...(q?.querySelectorAll('.botao-texto') ?? [])].find((b) => b.textContent === 'Dica')?.click()"
   )
-  await esperar(900)
+  await esperar(1000)
   await legenda('E um professor que corrige a resolução, por texto ou foto')
   await rolar(1, 3000)
-  await esperar(1500)
+  await esperar(1700)
 
   await legenda(null)
   acoes.navegar('simulado')
@@ -128,13 +157,13 @@ export async function gravarDemo(w: BrowserWindow, arquivo: string, acoes: Acoes
   await clicar("[...document.querySelectorAll('.lista-simulados button')].pop()?.click()")
   await esperar(450)
   await legenda('Simulado no estilo da prova, corrigido pela foto da folha')
-  await esperar(900)
+  await esperar(1000)
   await rolar(0.45, 2800)
-  await esperar(900)
+  await esperar(1000)
   await clicar("document.querySelector('.voltar')?.click()")
 
   await cena('constancia', 'Tudo organizado num lugar só')
-  await esperar(3200)
+  await esperar(3400)
   await legenda(null)
   await esperar(400)
 

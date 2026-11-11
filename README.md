@@ -230,15 +230,18 @@ Canvas e três semanas de estudo).
 
 ### Vídeo
 
-Um vídeo de demonstração com legendas, passando pelas telas com os mesmos dados de mentira. O app grava a própria
-janela com o `MediaRecorder` do Chromium, sem programa de fora (o roteiro fica em `src/main/video.ts`):
+Um vídeo de demonstração com legendas, passando por todas as telas (inclusive uma nota lançada ao vivo em Notas) com
+matérias, notas e plano fictícios (`src/main/demo-ficticia.ts`). O app grava a própria janela a 60 quadros com o
+`MediaRecorder` do Chromium, sem programa de fora (o roteiro fica em `src/main/video.ts`). Os mesmos dados fictícios
+servem para prints: `--ficticio` junto com `--dados` numa pasta vazia.
 
 ```bash
 npm run build && npx electron . --dados=%TEMP%\estudos-video --agora=2026-11-10T15:12 --video=%TEMP%\gravacao.bin
 ```
 
 A janela não pode ficar coberta durante a gravação. O arquivo sai em MP4 ou WebM, conforme o Chromium deixar, em
-1920x1032; o ffmpeg converte, completa até 1080 e põe a capa no começo e no fim.
+1920x1032; o ffmpeg converte, completa até 1080, suaviza o movimento (`fps=150,tmix=frames=3:weights='1 2 1',fps=60`)
+e põe a capa no começo e no fim.
 
 ## Gerar o instalador
 

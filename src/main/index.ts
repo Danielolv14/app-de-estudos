@@ -45,6 +45,7 @@ import { ControleBloqueio, desinstalarServico, instalarServico, nomeAmigavel, st
 import { Lembretes } from './lembrete'
 import { agora, definirAgora } from './relogio'
 import { gravarDemo } from './video'
+import { ARQUIVOS_FICTICIOS_CANVAS, extrasFicticios, semearFicticio } from './demo-ficticia'
 
 // ---------- Opções de linha de comando (para testes) ----------
 const arg = (nome: string): string | undefined =>
@@ -54,6 +55,8 @@ const tem = (nome: string): boolean => process.argv.includes(`--${nome}`)
 const pastaCaptura = arg('captura')
 const arquivoVideo = arg('video')
 const modoTeste = !!pastaCaptura || !!arquivoVideo || tem('sem-bloqueio')
+// Matérias, notas e plano inventados (vídeo e prints de divulgação), só numa pasta de dados à parte.
+const ficticio = (!!arquivoVideo || tem('ficticio')) && !!arg('dados')
 // O vídeo sai em 1920x1080: janela de 1280x720 com escala 1,5.
 if (arquivoVideo) app.commandLine.appendSwitch('force-device-scale-factor', '1.5')
 if (arg('dados')) app.setPath('userData', arg('dados')!)
@@ -660,7 +663,12 @@ async function prepararDemonstracao(comSessao: boolean, comIa: boolean): Promise
     mudou()
     await esperar(800)
   }
-  if (comIa) {
+  if (comIa && ficticio) {
+    extrasFicticios(repo, agora())
+    canvas.guardarArquivos(101, ARQUIVOS_FICTICIOS_CANVAS)
+    mudou()
+    await esperar(400)
+  } else if (comIa) {
     dadosFalsosDeIa(repo, agora())
     dadosFalsosDeCanvas(repo)
     dadosFalsosDeAula(repo, agora())
@@ -777,6 +785,7 @@ app.whenReady().then(async () => {
   repo = new Repositorio(banco)
   // Antes dos dados: a atualização de dados também grava a configuração, e aí a primeira vez não seria mais detectada.
   configurarPrimeiraVez()
+  if (ficticio) semearFicticio(repo, agora())
   prepararDados(repo)
 
   // Steam e outros abrem vários processos de uma vez: avisa uma vez por app a cada minuto.
