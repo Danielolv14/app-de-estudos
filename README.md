@@ -1,97 +1,198 @@
+<div align="center">
+
+<img src="resources/icone.png" width="96" alt="Ícone do App de Estudos">
+
 # App de Estudos
 
-App de desktop (Windows) para focar nos estudos: timer que conta o tempo estudado, plano por dia, calendário de provas
-e bloqueio de Instagram, WhatsApp Web e jogos enquanto a sessão estiver aberta. Especificação completa em
-[ESPECIFICACAO.md](ESPECIFICACAO.md).
+**App de desktop para Windows que transforma o plano de estudos em sessões de foco.**
+Timer que conta para cima, meta do dia, bloqueio de Instagram, WhatsApp Web e jogos durante a sessão,
+e uma IA que dá aula, monta simulado e corrige a resolução pela foto da folha.
 
-## Como funciona
+![Electron](https://img.shields.io/badge/Electron-45-47848F?logo=electron&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-sql.js-003B57?logo=sqlite&logoColor=white)
+![Vitest](https://img.shields.io/badge/testes-111%20passando-6E9F18?logo=vitest&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-desktop-0078D4?logo=windows&logoColor=white)
 
-- **Timer:** conta para cima, ligado a uma tarefa do plano. Pausar não desbloqueia nada.
-- **Meta do dia:** soma das horas previstas nas tarefas do dia (dá para ajustar na tela Plano).
-- **Trava:** antes de bater a meta, encerrar pede uma frase digitada (colar não funciona), com os dias até a próxima
-  avaliação da matéria da sessão ("...para a Prova 2 de Cálculo").
-- **Check-in:** ao encerrar, dois campos opcionais (o que fez e onde travou) ficam guardados na sessão, aparecem na
-  tela Plano e vão para o resumo do vault.
-- **Notas:** a tela Notas mostra quanto falta para chegar a 60 em cada matéria e calcula a meta de cada avaliação
-  que falta. Uma meta escrita à mão vale como fixa; a reavaliação entra no lugar da prova de menor nota quando isso
-  ajuda.
-- **Tarefas atrasadas:** um botão passa a tarefa para hoje ou para o próximo dia que já tem tarefa da mesma matéria.
-- **Bloqueio de sites:** um serviço do Windows (tarefa agendada que roda como SYSTEM) mantém um bloco no arquivo
-  `hosts` enquanto a sessão estiver aberta. O app só escreve um pedido em `C:\ProgramData\AppDeEstudos\pedido.json`;
-  o serviço aceita apenas nomes de domínio e sempre aponta para `0.0.0.0`. Pedido sumido ou quebrado não libera
-  (o bloqueio fica como estava), e durante a sessão as listas de Ajustes só aceitam acréscimos.
-- **PC dormindo:** com a sessão contando, o PC não dorme sozinho (a tela apaga). Se dormir mesmo assim, esse tempo
-  não conta e a sessão volta pausada.
-- **Abas já abertas:** o hosts não derruba conexões abertas, então o app reinicia o Brave (e o Chrome, se estiver
-  aberto) no começo da sessão, restaurando as abas.
-- **Brave:** enquanto bloqueia, o serviço liga duas políticas em `HKLM\SOFTWARE\Policies\BraveSoftware\Brave`. A
-  `TorDisabled` tira a janela privada com Tor, e a `DnsOverHttpsMode=off` tira o DNS seguro. As duas furariam o
-  hosts. Ao liberar, ele tira as duas (no Chrome, só a do DNS). Por isso o Brave mostra "gerenciado pela sua
-  organização" durante a sessão.
-- **Atualizar o serviço:** o script do serviço fica em `C:\Program Files\App de Estudos - Bloqueio` e não muda
-  quando o app é atualizado. Se o script novo for de outra versão (`$VersaoServico`), a tela Ajustes pede para
-  clicar em **Reinstalar**.
-- **Apps do PC:** durante a sessão, um PowerShell em segundo plano fecha WhatsApp Desktop, Steam, Epic, Riot e
-  qualquer programa aberto de dentro das pastas de jogos.
-- **Resumo no Obsidian:** o app reescreve `02-Areas/Painel de estudos (app).md` no vault a cada mudança.
-- **Constância:** mapa de calor das horas por dia, sequência de dias com a meta cumprida (dia sem meta não quebra)
-  e planejado x feito por semana.
-- **Semestre:** em Ajustes, "Começar o próximo" arquiva as matérias de agora (somem das listas, o histórico fica) e
-  pode apagar as tarefas pendentes delas. A semana padrão (que matéria entra em cada dia) também fica em Ajustes.
+</div>
 
-### IA, pelo Claude Code
+![Tela Foco com uma sessão em andamento](.github/prints/foco.png)
 
-A aula, o simulado, a correção por foto, a leitura do plano de ensino e o replanejamento usam o **Claude Code instalado no
-PC** (`claude -p`), com a assinatura do Daniel. Não tem chave de API.
+## Por que existe
 
-- **Login:** o Claude Code de linha de comando tem login próprio, separado do app desktop. Uma vez só, rode
-  `claude auth login` num terminal e depois clique em **Ajustes > Testar**.
-- **Modo restrito:** cada chamada usa `--restricted` (ignora os arquivos de configuração do usuário, então os hooks
-  não rodam), `--tools Read`, `--strict-mcp-config` e `--json-schema`. A IA só lê os arquivos da pasta da tarefa
-  (`%APPDATA%\App de Estudos\ia\...` ou `simulados\<id>`), não roda comando e não edita nada. O pedido vai pela
-  entrada padrão, e o app tira do ambiente as variáveis `CLAUDE*` e `ANTHROPIC*` (uma chave de API esquecida faria a
-  chamada ser cobrada na API).
-- **Uma tarefa por vez**, com tempo limite (de 2 a 12 min) e botão de cancelar. Cada uso fica na tabela `ia_usos`.
-- **Nada entra sem revisão:** o simulado e a correção são estimativas da IA. A leitura do PDF aparece no
-  Calendário para conferir antes de aplicar, e o replanejamento aparece no Plano com o antes e depois de cada
-  mudança, para marcar o que aplicar. Tudo o que a IA devolve passa por `src/shared/respostas-ia.ts`, que descarta o
-  que não dá para aplicar (tarefa que não existe, data no passado, nota maior que o valor da questão).
-- **Simulado:** a IA monta a prova a partir do conteúdo da avaliação (campo "O que cai" do calendário), com a
-  resolução de cada questão escondida até a prova acabar. "Começar" abre uma sessão de estudo com cronômetro. As
-  fotos da folha entram arrastando para a tela (JPG, PNG ou WEBP; HEIC não). A nota e os pontos fracos vão para o
-  check-in e para o resumo do vault, e as sugestões viram tarefas do plano.
-- **Aula (a IA como professor):** no Foco, "Preparar a aula" (ou a tela **Aula**) manda o tema da tarefa, a próxima
-  avaliação, onde o Daniel travou e até 6 PDFs (o app sugere os do Canvas com o nome parecido com o tema). A IA
-  devolve a ordem de estudo, as partes com fórmulas e exemplo resolvido, as armadilhas e de 5 a 10 exercícios com
-  dica e gabarito escondidos (o gabarito abre depois de uma tentativa). Embaixo, a conversa com o professor: a
-  resposta de um exercício (texto ou foto) volta corrigida e marca o exercício (certo, em parte, errado). Um atalho
-  no canto leva até o professor, e o texto da IA aparece arrumado (passos, listas, negrito e expoente). "Mais exercícios" foca nos errados, e "Salvar no
-  Obsidian" grava a aula em `Aulas do app/` ao lado do resumo do vault. Tabela `aulas`; o material fica em
-  `%APPDATA%\App de Estudos\aulas\<id>` para as perguntas depois.
-- **Sigla da matéria:** os avisos de cima mostram a sigla (CAL, ERS, IHC), automática pelo nome ou escrita em
-  Ajustes, e tiram o nome da matéria do título ("Prova 3 de Cálculo" vira "CAL Prova 3").
+Faço Engenharia de Software na PUC Minas e estudo à tarde no PC de casa. O problema nunca foi falta de plano: era
+abrir o Instagram "só um minuto" e o Pomodoro, que não funciona comigo. Então o app junta o plano, o calendário de
+provas e o timer num lugar só, e durante a sessão os sites e jogos simplesmente não abrem. Para parar antes da meta,
+é preciso digitar uma frase com quantos dias faltam para a próxima prova da matéria. Colar não funciona.
 
-### Canvas da PUC
+## O que ele faz
+
+### Sessão de foco
+
+- **Timer que conta para cima**, ligado a uma tarefa do plano. Pausar não desbloqueia nada.
+- **Meta do dia** = soma das horas previstas nas tarefas do dia.
+- **Trava:** antes de bater a meta, encerrar pede a frase digitada, com a avaliação da matéria da sessão.
+- **Bloqueio de sites e apps:** Instagram, WhatsApp Web e o que mais estiver na lista viram `0.0.0.0` no `hosts`.
+  Um vigia fecha WhatsApp Desktop, Steam, Epic, Riot e qualquer jogo aberto das pastas deles.
+- **Mini-timer** sempre por cima das outras janelas, **lembrete** que insiste a cada 15 min e **check-in** no fim
+  (o que fez e onde travou).
+
+<p align="center">
+  <img src=".github/prints/trava.png" width="49%" alt="Trava pedindo a frase para encerrar antes da meta">
+  <img src=".github/prints/mini.png" width="49%" alt="Mini-timer flutuante">
+</p>
+
+### Aula com a IA como professor
+
+O app manda para a IA o tema da tarefa, a próxima avaliação, onde travei no último check-in e até 6 PDFs da matéria
+(sugeridos do Canvas pelo nome). Ela devolve a ordem de estudo, as partes com fórmula e exemplo resolvido, as
+armadilhas e de 5 a 10 exercícios com dica e gabarito escondidos. O gabarito só abre depois de uma tentativa. Embaixo
+fica a conversa com o professor: mando a resposta por texto ou foto, ele corrige e marca o exercício.
+
+<p align="center">
+  <img src=".github/prints/aula.png" width="49%" alt="Aula gerada pela IA">
+  <img src=".github/prints/professor.png" width="49%" alt="Conversa com o professor corrigindo um exercício">
+</p>
+
+### Simulado com correção por foto
+
+A IA monta a prova a partir do que cai na avaliação, com cronômetro. Resolvo no papel, arrasto as fotos da folha e
+ela corrige questão por questão, dizendo o que acertei e onde errei. Os pontos fracos viram sugestões de tarefa.
+
+![Simulado corrigido](.github/prints/simulado.png)
+
+### Plano, calendário e Canvas da PUC
+
+- **Plano por dia**, com botão para passar tarefas atrasadas e **replanejamento pela IA**, que mostra o antes e
+  depois de cada mudança para eu marcar o que aplicar.
+- **Calendário** com contagem regressiva das provas no topo de todas as telas.
+- **Canvas da PUC** (API REST, só leitura): matérias, atividades, provas, notas e PDFs. Novidade passa por uma
+  revisão, com "Juntar com" para não duplicar. O que já foi entregue sai dos avisos.
+- **Leitura do PDF do plano de ensino** para montar o semestre, e **calculadora de nota** (quanto falta para 60).
+
+<p align="center">
+  <img src=".github/prints/plano.png" width="49%" alt="Proposta de replanejamento da IA">
+  <img src=".github/prints/calendario.png" width="49%" alt="Revisão das novidades do Canvas">
+</p>
+
+### Constância
+
+Mapa de calor das horas por dia, sequência de dias com a meta cumprida (dia sem meta não quebra a sequência) e
+planejado x feito por semana. O app também reescreve uma nota de resumo no meu vault do Obsidian.
+
+![Tela Constância](.github/prints/constancia.png)
+
+## Como funciona por dentro
+
+### Bloqueio: o app pede, um serviço SYSTEM executa
+
+O app roda como usuário comum e nunca mexe no `hosts`. Quem mexe é uma tarefa agendada que roda como SYSTEM,
+instalada uma vez (o único pedido de administrador). Fechar o app não desbloqueia, e o bloqueio continua depois de
+reiniciar o PC.
+
+```mermaid
+flowchart LR
+    A["App (Electron)<br/>usuário comum"] -- "escreve pedido.json" --> P[("ProgramData\AppDeEstudos")]
+    P -- "lê a cada segundo" --> S["Serviço de bloqueio<br/>tarefa agendada como SYSTEM"]
+    S --> H["hosts<br/>domínios → 0.0.0.0"]
+    S --> B["Políticas do Brave<br/>sem Tor e sem DNS seguro"]
+    S -- "status.json" --> A
+```
+
+- **Falha fechado:** o serviço só libera com um pedido bem formado. Se o `pedido.json` sumir ou vier quebrado, o
+  bloqueio fica como estava. E se o serviço não responder ao encerrar, o app avisa em vez de fingir que liberou.
+- **Só domínios, sempre `0.0.0.0`:** o serviço valida cada nome antes de escrever, então o pedido não serve para
+  redirecionar nada.
+- **Listas que só crescem:** durante a sessão, as listas de sites e apps só aceitam acréscimos (garantido no
+  processo principal, não só na tela).
+- **Abas já abertas:** o `hosts` não derruba conexões abertas, então o app reinicia o Brave (e o Chrome) restaurando
+  as abas. Enquanto bloqueia, o serviço desliga a janela com Tor e o DNS seguro, que furariam o `hosts`.
+
+### IA pelo Claude Code, sem chave de API
+
+Em vez de uma chave de API, o app chama o **Claude Code instalado no PC** (`claude -p`), usando a assinatura de quem
+está logado. Cada tarefa roda numa pasta própria e em modo restrito.
+
+```mermaid
+flowchart LR
+    T["Tarefa<br/>aula, simulado, plano de ensino"] --> D["Pasta da tarefa<br/>PDFs, fotos, pedido"]
+    D --> C["claude -p --restricted<br/>--tools Read --json-schema"]
+    C --> V["Validação<br/>respostas-ia.ts"]
+    V --> R["Tela de revisão"]
+    R -- "aprovado" --> DB[("SQLite")]
+```
+
+- A IA **só lê** a pasta da tarefa: sem comandos, sem MCP, sem editar arquivos. O app tira do ambiente as variáveis
+  `CLAUDE*` e `ANTHROPIC*` (uma chave esquecida faria a chamada ser cobrada na API).
+- A resposta vem num **JSON com schema** e passa por `src/shared/respostas-ia.ts`, que descarta o que não dá para
+  aplicar (tarefa que não existe, data no passado, nota maior que o valor da questão).
+- **Nada entra sem revisão:** o plano de ensino lido e o replanejamento aparecem com o antes e depois para aprovar.
+- Uma tarefa por vez, com tempo limite e botão de cancelar. Cada uso fica registrado na tabela `ia_usos`.
+
+### Decisões técnicas
+
+| Decisão | Por quê |
+|---|---|
+| **sql.js** (SQLite em WebAssembly) | Sem módulo nativo para recompilar a cada versão do Electron. |
+| Sessão salva como "acumulado até o marco + trecho desde o marco", com batimento de 30 s | Se o PC desligar, a sessão volta pausada contando só até o último sinal. Se o PC dormir, esse tempo não conta. |
+| Regras puras em `src/shared` | Timer, meta, trava, notas e validação da IA são testados sem Electron. |
+| Token do Canvas com `safeStorage` (DPAPI) | O token fica criptografado e só vai para a origem do Canvas: links de paginação ou download de outro servidor não levam o cabeçalho. |
+| IA testada com um "claude" falso | Os testes rodam um script do Node no lugar do Claude Code, sem gastar nada. |
+| Serviço testado de verdade | Os testes rodam o `.ps1` do serviço contra um `hosts` falso. |
+| Cores em tokens CSS | A paleta inteira muda num bloco só do `estilos.css`. Fontes Geist e Geist Mono. |
+
+<details>
+<summary><b>Mais detalhes: Canvas, Aula, Simulado e o serviço</b></summary>
+
+#### Canvas da PUC
 
 O app lê o Canvas (`https://pucminas.instructure.com`, pela API REST v1) com um token pessoal que o aluno cria em
 **Conta > Configurações > + Novo token de acesso** e cola em **Ajustes > Canvas da PUC**. Só leitura.
 
-- **Token:** criptografado com o `safeStorage` do Electron (DPAPI do Windows) no kv `canvas_token`. Ele só é enviado
-  para o endereço do Canvas: links de paginação ou de download de outra origem não levam o cabeçalho. Não aparece em
-  tela, log, resumo do vault nem mensagem de erro.
+- **Token:** criptografado com o `safeStorage` do Electron no kv `canvas_token`. Não aparece em tela, log, resumo do
+  vault nem mensagem de erro.
 - **Sincronia:** 20 s depois de abrir e a cada 6 horas (ou em "Atualizar do Canvas", no Calendário). Busca os cursos
   ativos, as atividades de cada um (com a nota, quando publicada) e as provas do calendário.
 - **Ligações:** kv `canvas_vinculos` (`curso:ID` → matéria, `tarefa:ID` ou `evento:ID` → evento; 0 = ignorado). O que
-  já está ligado tem a data, o valor e a nota atualizados sozinhos, com um aviso. O que é novo vai para uma revisão no
-  Calendário (kv `revisao_canvas`), onde se escolhe a matéria de cada curso, o que entra e com qual avaliação já
-  existente juntar (para não duplicar).
-- **Já entregue:** atividade que o Canvas mostra como enviada, corrigida ou dispensada não entra na revisão e sai dos
-  avisos de cima, da trava, do resumo e do Simulado (coluna `eventos.entregue`). No Calendário ela fica riscada.
-- **PDFs:** "Pegar do Canvas" no plano de ensino e "Material de aula do Canvas" no simulado (até 4 PDFs, que a IA lê
-  para seguir a notação do professor). Quando o curso esconde a aba Arquivos, a lista vem dos módulos. Os PDFs ficam
-  em `%APPDATA%\App de Estudos\canvas\`.
+  já está ligado tem a data, o valor e a nota atualizados sozinhos. O que é novo vai para a revisão no Calendário.
+- **Já entregue:** atividade enviada, corrigida ou dispensada não entra na revisão e sai dos avisos de cima, da trava,
+  do resumo e do Simulado (coluna `eventos.entregue`). No Calendário ela fica riscada.
+- **PDFs:** "Pegar do Canvas" no plano de ensino e "Material de aula do Canvas" no simulado e na aula. Quando o curso
+  esconde a aba Arquivos, a lista vem dos módulos.
 - Código: `src/main/canvas.ts` (cliente), `src/main/sincronia-canvas.ts` (sincronia e revisão),
   `src/shared/canvas.ts` (comparação, sem rede) e `src/renderer/src/componentes/Canvas.tsx` (telas).
+
+#### Aula e Simulado
+
+- **Aula:** tabela `aulas` (conteúdo, progresso e conversa em JSON). O material e as fotos ficam em
+  `%APPDATA%\App de Estudos\aulas\<id>` para o professor reler nas perguntas. "Mais exercícios" foca nos errados, e
+  "Salvar no Obsidian" grava a aula em Markdown no vault. O texto da IA aparece com passos, listas, negrito, expoente e
+  índice (`src/shared/texto.ts` e `componentes/TextoRico.tsx`).
+- **Simulado:** a resolução de cada questão fica escondida até a prova acabar. As fotos entram arrastando para a tela
+  (JPG, PNG ou WEBP). A nota e os pontos fracos vão para o check-in e para o resumo do vault.
+- **Login do Claude Code:** o Claude Code de linha de comando tem login próprio. Uma vez só, rode `claude auth login`
+  num terminal e depois clique em **Ajustes > Testar**. O modelo padrão é o Opus, com o Sonnet como opção.
+
+#### Serviço de bloqueio
+
+- Script em `C:\Program Files\App de Estudos - Bloqueio`; pedido e status em `C:\ProgramData\AppDeEstudos`.
+- Enquanto bloqueia, liga as políticas `TorDisabled` e `DnsOverHttpsMode=off` em
+  `HKLM\SOFTWARE\Policies\BraveSoftware\Brave` (no Chrome, só a do DNS). Por isso o Brave mostra "gerenciado pela sua
+  organização" durante a sessão.
+- O script não muda quando o app é atualizado. Se o script novo for de outra versão (`$VersaoServico`), a tela
+  Ajustes pede para clicar em **Reinstalar**.
+- Com a sessão contando, o app pede ao Windows para não dormir sozinho (a tela ainda apaga).
+
+</details>
+
+## Stack
+
+- **Electron 45** + **electron-vite 6** + **React 19** + **TypeScript**
+- **SQLite** via **sql.js**, dados em `%APPDATA%\App de Estudos`
+- **PowerShell** para o serviço de bloqueio e o vigia de apps
+- **Claude Code** (`claude -p`) para a IA
+- **Vitest** (111 testes) e **electron-builder** (instalador NSIS)
 
 ## Rodar
 
@@ -105,27 +206,27 @@ npm install
 npm run dev
 ```
 
+O bloqueio de verdade só liga depois de **Ajustes > Instalar o bloqueio** (o Windows pede administrador uma vez).
+
 ## Testes
 
 ```bash
 npm test
 ```
 
-Cobrem as regras (timer, meta, trava, lembrete), a calculadora de nota, o banco (inclusive a atualização de um
-banco da v1.0), a sessão, o resumo do vault, o serviço de bloqueio
-(rodando o `.ps1` de verdade contra um `hosts` falso) e o vigia de apps (com `ping` no lugar de um app real).
-A IA é testada sem chamar o Claude: o executor roda um "claude" falso (um script do Node), e o assistente usa
-respostas de mentira. Também cobrem a validação das respostas, o replanejamento e o plano de ensino aplicados, a
-virada de semestre e a constância.
+Cobrem as regras (timer, meta, trava, lembrete), a calculadora de nota, o banco (inclusive a atualização de um banco
+da v1.0), a sessão, o resumo do vault, o serviço de bloqueio (rodando o `.ps1` de verdade contra um `hosts` falso), o
+vigia de apps (com `ping` no lugar de um app real), a comparação com o Canvas, a validação das respostas da IA, a aula, o
+replanejamento, a virada de semestre e a constância.
 
-Capturas de tela sem tocar no bloqueio nem nos seus dados:
+Prints de todas as telas, sem tocar no bloqueio nem nos seus dados (os desta página saíram assim):
 
 ```bash
-npm run build && npx electron . --dados=%TEMP%\estudos-teste --captura=%TEMP%\capturas --agora=2026-11-10T15:12 --captura-sessao --captura-ia
+npm run build && npx electron . --dados=%TEMP%\estudos-teste --captura=%TEMP%\capturas --agora=2026-11-10T15:12 --captura-sessao --captura-ia --captura-trava
 ```
 
-`--captura-ia` põe dados de mentira (simulado corrigido, proposta de replanejamento, plano de ensino lido e três
-semanas de estudo) para conferir as telas da IA.
+`--captura-ia` põe dados de mentira (simulado corrigido, aula de Cálculo, proposta de replanejamento, novidades do
+Canvas e três semanas de estudo).
 
 ## Gerar o instalador
 
@@ -133,16 +234,36 @@ semanas de estudo) para conferir as telas da IA.
 npm run instalador
 ```
 
-Sai em `dist/App-de-Estudos-<versão>-instalador.exe`. Depois de instalar, abra **Ajustes > Instalar o bloqueio**
-(o Windows pede permissão de administrador uma vez).
+Sai em `dist/App-de-Estudos-<versão>-instalador.exe`. Instalar por cima atualiza e mantém os dados.
 
 ## Estrutura
 
 | Pasta | O quê |
 |---|---|
 | `src/shared` | Tipos e regras puras (timer, meta, trava, lembrete, notas, constância, validação das respostas da IA, resumo do vault) |
-| `src/main` | Processo principal do Electron: banco (sql.js), sessão, bloqueio, lembrete, IA (`claude.ts`, `assistente.ts`, `prompts.ts`, `planejamento.ts`), janelas e bandeja |
+| `src/main` | Processo principal: banco (sql.js), sessão, bloqueio, lembrete, Canvas, IA (`claude.ts`, `assistente.ts`, `prompts.ts`, `planejamento.ts`), janelas e bandeja |
 | `src/preload` | Ponte segura entre as telas e o processo principal |
 | `src/renderer` | Telas em React: Foco, Aula, Plano, Calendário, Notas, Simulado, Constância, Ajustes e o mini-timer (Ctrl+1 a Ctrl+8 trocam de tela) |
 | `servico` | Scripts PowerShell do serviço de bloqueio (instalar, rodar, desinstalar) |
 | `testes` | Testes com Vitest |
+
+## Versões
+
+| Versão | Data | O que entrou |
+|---|---|---|
+| 1.0 | 08/11/2026 | Núcleo: timer, plano, calendário, trava e bloqueio de sites e apps |
+| 1.1 | 08/11/2026 | Calculadora de nota, check-in e tarefas atrasadas; visual novo (Geist + âmbar) e bloqueio no Brave |
+| 1.2 a 1.4 | 08 a 10/11/2026 | IA pelo Claude Code (simulado, plano de ensino, replanejamento), Constância e Canvas da PUC |
+| 1.5 | 10/11/2026 | Aula com a IA como professor, sigla da matéria e atalhos |
+| 1.5.1 | 11/11/2026 | PC dormindo não conta, bloqueio que falha fechado, atividades entregues fora dos avisos |
+
+## Limites conhecidos
+
+- Não bloqueia o celular, e uma VPN ou proxy passa por cima do `hosts`.
+- Quem tem administrador no PC consegue desfazer o bloqueio. A trava serve contra o impulso, não contra a decisão de
+  parar.
+- A nota do simulado é uma estimativa: a IA pode errar conta ou ler mal a letra. A tela diz isso e mostra o que ela
+  considerou certo e errado.
+- Feito para a minha rotina: o plano inicial, as matérias e o Canvas são os da PUC Minas.
+
+Especificação completa e decisões em [ESPECIFICACAO.md](ESPECIFICACAO.md).

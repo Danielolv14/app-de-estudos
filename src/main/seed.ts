@@ -53,18 +53,19 @@ export function prepararDados(repo: Repositorio): void {
 
 type Nova = [titulo: string, data: string | null, tipo: TipoEvento, pontos: number, nota: number | null, meta?: number]
 
-// Notas de "Cálculo 1 (2026-2)" e "Arquitetura de Computadores (2026-2)" no vault, em 2026-11-05.
-// ADA e trabalho ainda não têm nota: entram com o que o Daniel costuma tirar como meta fixa.
+// Notas de exemplo para o primeiro uso (as de verdade ficam só no banco de cada um). A Prova 1 é a menor nota
+// de propósito: assim a reavaliação entra no lugar dela, como os testes da calculadora esperam.
+// ADA e trabalho ainda não têm nota: entram com uma meta fixa.
 const NOTAS: Record<'Cálculo' | 'Arquitetura', Nova[]> = {
   Cálculo: [
-    ['Prova 1 de Cálculo', null, 'prova', 25, 8],
-    ['Atividade avaliativa 1 de Cálculo', null, 'atividade', 10, 5],
-    ['Prova 2 de Cálculo', '2026-10-29', 'prova', 25, 13],
+    ['Prova 1 de Cálculo', null, 'prova', 25, 10],
+    ['Atividade avaliativa 1 de Cálculo', null, 'atividade', 10, 7],
+    ['Prova 2 de Cálculo', '2026-10-29', 'prova', 25, 11],
     ['ADA de Cálculo', null, 'atividade', 5, null, 3],
     ['Reavaliação de Cálculo', null, 'reavaliacao', 25, null]
   ],
   Arquitetura: [
-    ['Prova 1 de Arquitetura', '2026-09-11', 'prova', 30, 8],
+    ['Prova 1 de Arquitetura', '2026-09-11', 'prova', 30, 12],
     ['Reposição da Prova 2 de Arquitetura', null, 'prova', 30, null],
     ['Trabalho de Arquitetura', null, 'atividade', 5, null, 4],
     ['ADA de Arquitetura', null, 'atividade', 5, null, 3]

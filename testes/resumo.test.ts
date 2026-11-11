@@ -33,7 +33,7 @@ describe('resumo no vault', () => {
     expect(md).toContain(
       '  - Metas: Atividade avaliativa 2 de Cálculo 6,5 (calculada); Prova 3 de Cálculo 16,3 (calculada); ADA de Cálculo 3; Reavaliação de Cálculo 16,3 (calculada).'
     )
-    expect(md).toContain('  - Supõe que a reavaliação entra no lugar da Prova 1 de Cálculo (8).')
+    expect(md).toContain('  - Supõe que a reavaliação entra no lugar da Prova 1 de Cálculo (10).')
     expect(md).toContain('- **Arquitetura:** precisa de 53 dos 90 pontos em jogo (59% de cada avaliação).')
     expect(md).toContain('Meta: 2h. Estudado: 1h30.')
     expect(md).toContain('## Atrasadas\n- [ ] sex 06/11, Arquitetura: Revisar a aula 14')
