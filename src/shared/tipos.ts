@@ -44,6 +44,8 @@ export type Evento = {
   nota: number | null
   /** O que cai na avaliação, ou o assunto da aula (usado pelo simulado e pelo replanejamento). */
   conteudo: string
+  /** Já entregue no Canvas: sai dos avisos de cima, da trava e das próximas avaliações. */
+  entregue: boolean
 }
 
 export type Sessao = {
@@ -307,6 +309,8 @@ export type ItemCanvas = {
   /** Nota lançada (só quando o professor publicou). */
   nota: number | null
   conteudo: string
+  /** O Daniel já entregou (ou a atividade já foi corrigida). Evento do calendário do Canvas é sempre false. */
+  entregue: boolean
 }
 
 export type CursoNaRevisao = CursoCanvas & {

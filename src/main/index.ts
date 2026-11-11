@@ -1,5 +1,18 @@
 // Processo principal do App de Estudos: janelas, bandeja, mini-timer e ligação entre as partes.
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, safeStorage, screen, Tray } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  nativeImage,
+  Notification,
+  powerMonitor,
+  powerSaveBlocker,
+  safeStorage,
+  screen,
+  Tray
+} from 'electron'
 import { copyFileSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, extname, join } from 'node:path'
@@ -15,7 +28,7 @@ import type {
   SituacaoExercicio,
   StatusBloqueio
 } from '@shared/tipos'
-import { dataLocal, estudoMs, formatarDuracao } from '@shared/regras'
+import { dataLocal, estudoMs, formatarDuracao, listasSoCrescem } from '@shared/regras'
 import { gerarResumo } from '@shared/resumo'
 import { aulaEmMarkdown, nomeArquivoAula } from '@shared/aula'
 import { siglaDe } from '@shared/sigla'
@@ -66,6 +79,10 @@ let metaAvisada: string | null = null
 let ultimoStatus = ''
 let ultimoDia = ''
 let ultimoAvisoIa = 0
+/** Pedido ao Windows para não dormir sozinho enquanto a sessão está contando (a tela ainda pode apagar). */
+let semDormir: number | null = null
+/** Aviso fixo de "os sites podem continuar bloqueados", quando o serviço não confirmou a liberação. */
+let liberacaoPendente: number | null = null
 
 const STATUS_TESTE: StatusBloqueio = { instalado: true, vivo: true, bloqueado: true, erro: null, desatualizado: false }
 
@@ -106,20 +123,51 @@ function mudou(): void {
     atualizarBandeja()
     atualizarMini()
     escreverResumoDepois()
+    ajustarSono()
   }, 30)
 }
 
-function avisar(texto: string, notificar = false): void {
+/**
+ * Com a sessão contando, o PC não dorme sozinho: o Daniel resolve exercício no papel e a suspensão por inatividade
+ * cortaria esse tempo. Se ele mesmo mandar dormir (ou fechar a tampa), o Windows dorme e esse tempo não conta.
+ */
+function ajustarSono(): void {
+  const contando = repo.sessaoAtiva()?.status === 'estudando'
+  if (contando && semDormir === null) semDormir = powerSaveBlocker.start('prevent-app-suspension')
+  else if (!contando && semDormir !== null) {
+    powerSaveBlocker.stop(semDormir)
+    semDormir = null
+  }
+}
+
+/** `fixo`: fica até o Daniel fechar (ou o app tirar), em vez de sumir sozinho. Devolve o id do aviso. */
+function avisar(texto: string, notificar = false, fixo = false): number {
   const id = proximoAviso++
   avisos = [...avisos.slice(-3), { id, texto }]
-  setTimeout(() => {
-    avisos = avisos.filter((a) => a.id !== id)
-    mudou()
-  }, 9000)
+  if (!fixo)
+    setTimeout(() => {
+      avisos = avisos.filter((a) => a.id !== id)
+      mudou()
+    }, 9000)
   if (notificar && !(principal?.isVisible() && principal.isFocused())) {
     new Notification({ title: 'App de Estudos', body: texto, icon: recurso('icone.png') }).show()
   }
   mudou()
+  return id
+}
+
+function tirarAviso(id: number): void {
+  avisos = avisos.filter((a) => a.id !== id)
+  mudou()
+}
+
+/** O PC dormiu no meio da sessão: avisa que esse tempo não contou. */
+function avisarParada(ms: number | null): void {
+  if (ms === null) return
+  avisar(
+    `O PC ficou ${ms < 60_000 ? 'alguns segundos' : formatarDuracao(ms)} dormindo, e esse tempo não contou. A sessão está pausada: clique em Retomar quando voltar a estudar.`,
+    true
+  )
 }
 
 // ---------- Resumo no vault ----------
@@ -296,6 +344,7 @@ function aplicarInicioComWindows(c: Config): void {
 }
 
 function salvarConfig(c: Config): void {
+  if (repo.sessaoAtiva()) c = { ...c, ...listasSoCrescem(repo.config(), c) }
   repo.salvarConfig(c)
   aplicarInicioComWindows(c)
   if (repo.sessaoAtiva() && !modoTeste) void bloqueio.atualizar(c)
@@ -350,6 +399,7 @@ function registrarIpc(): void {
   h('lembrete:fechar', () => lembretes.fechar())
   h('aviso:remover', (id: number) => {
     avisos = avisos.filter((a) => a.id !== id)
+    if (id === liberacaoPendente) liberacaoPendente = null
   })
   h('bloqueio:instalar', async () => {
     const r = await instalarServico(pastaScripts())
@@ -543,15 +593,25 @@ function copiarImagem(de: string, para: string): string {
 
 // ---------- Rotinas periódicas ----------
 function iniciarRotinas(): void {
-  setInterval(() => sessao.batimento(), 30_000)
+  setInterval(() => avisarParada(sessao.batimento()), 30_000)
+  // O PC dormindo não conta como estudo (o batimento acima pega o caso em que o aviso do Windows não chega).
+  powerMonitor.on('suspend', () => sessao.suspender())
+  powerMonitor.on('resume', () => avisarParada(sessao.acordar()))
   setInterval(() => lembretes.conferir(agora()), 30_000)
   setTimeout(() => lembretes.conferir(agora()), 5000)
   setInterval(() => {
     // Status do serviço de bloqueio mudou?
-    const s = JSON.stringify(modoTeste ? STATUS_TESTE : statusBloqueio())
+    const status = modoTeste ? STATUS_TESTE : statusBloqueio()
+    const s = JSON.stringify(status)
     if (s !== ultimoStatus) {
       ultimoStatus = s
       mudou()
+    }
+    // O serviço voltou e liberou os sites depois de uma sessão que terminou sem resposta dele.
+    if (liberacaoPendente !== null && (repo.sessaoAtiva() || (status.vivo && !status.bloqueado))) {
+      tirarAviso(liberacaoPendente)
+      liberacaoPendente = null
+      if (!repo.sessaoAtiva()) avisar('O serviço de bloqueio respondeu e liberou os sites.', true)
     }
     // Virou o dia?
     const hoje = dataLocal(agora())
@@ -634,6 +694,12 @@ async function capturar(pasta: string): Promise<void> {
         await esperar(500)
         writeFileSync(join(pasta, `aula-${i + 2}.png`), await foto(w.webContents))
       }
+      // Gabarito de um exercício ainda não tentado: o primeiro clique só pergunta.
+      await js(
+        "(() => { const q = [...document.querySelectorAll('.exercicio')].find((e) => !e.className.includes('questao--')); if (!q) return; [...q.querySelectorAll('.botao-texto')].find((b) => b.textContent === 'Gabarito')?.click(); q.scrollIntoView({ block: 'center' }) })()"
+      )
+      await esperar(500)
+      writeFileSync(join(pasta, 'aula-gabarito.png'), await foto(w.webContents))
       await js("document.querySelector('.voltar')?.click()")
       await esperar(400)
       await js("document.querySelector('.titulo-tela .tecla--ambar')?.click()")
@@ -697,13 +763,24 @@ app.whenReady().then(async () => {
     ligarBloqueio: (reiniciar) => {
       if (modoTeste) return
       void bloqueio.ligar(repo.config(), reiniciar).then((r) => {
-        if (!r.sites) avisar('O bloqueio de sites não está ligado: instale o serviço em Ajustes.')
+        if (r.sites === 'sem-servico') avisar('O bloqueio de sites não está instalado: instale o serviço em Ajustes.')
+        else if (r.sites === 'sem-resposta')
+          avisar('O serviço de bloqueio não respondeu, então os sites ainda podem abrir. Ele bloqueia assim que voltar; confira em Ajustes.', true)
         if (r.reiniciados.length > 0)
           avisar(`Reiniciei o ${r.reiniciados.join(' e o ')} para derrubar as abas que já estavam abertas.`)
       })
     },
     desligarBloqueio: () => {
-      if (!modoTeste) void bloqueio.desligar()
+      if (modoTeste) return
+      void bloqueio.desligar().then((r) => {
+        // Não finge que liberou: o pedido fica salvo e o serviço libera quando voltar.
+        if (r !== 'sem-resposta' || repo.sessaoAtiva() || liberacaoPendente !== null) return
+        liberacaoPendente = avisar(
+          'O serviço de bloqueio não respondeu, então o Instagram e o WhatsApp Web podem continuar bloqueados. O pedido para liberar ficou salvo: eles voltam assim que o serviço responder. Para resolver agora, clique em Reinstalar em Ajustes (ou reinicie o PC).',
+          true,
+          true
+        )
+      })
     },
     mudou
   })

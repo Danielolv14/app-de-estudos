@@ -15,7 +15,7 @@ Decidida no grill-me de 2026-11-08. App de desktop para o PC pessoal (Windows) q
 | Timer | Conta para cima (nada de Pomodoro). Fica ligado a uma tarefa do plano: as horas vão para a matéria e, ao terminar, a tarefa é marcada como feita. |
 | Pausa | Continua bloqueado. O tempo pausado não conta como estudo e aparece no histórico ("2h10 estudando, 15 min de pausa"). |
 | Meta do dia | Vem do plano: cada dia tem as tarefas e uma estimativa de horas, que dá para ajustar. Em dia de folga a meta é zero. |
-| Trava | Forte: só libera quando a meta do dia for batida. Para sair antes, é preciso digitar uma frase longa (ex.: com os dias que faltam para a próxima prova). |
+| Trava | Forte: só libera quando a meta do dia for batida. Para sair antes, é preciso digitar uma frase longa, com os dias que faltam para a próxima avaliação **da matéria da sessão** e o nome dela (corrigido em 2026-11-11: antes pegava a de qualquer matéria). |
 | IA | **Claude Code do PC** (`claude -p`), com a assinatura do Daniel, sem chave de API (mudou em 2026-11-08: antes era a API da Anthropic). Roda em modo restrito, só lendo os arquivos da pasta da tarefa. Recebe o **PDF do plano de ensino** e devolve as provas, as datas e as aulas para o calendário. O replanejamento encaixa o plano diário na semana padrão. Tudo passa por revisão antes de entrar. |
 | Lembrete | Horário fixo por dia da semana (ex.: ter, qua e qui às 14h). Uma notificação mostra a tarefa do dia e se repete a cada 15 min até o timer começar ou o lembrete ser adiado. |
 | Obsidian | O app é o dono dos dados e regenera sozinho uma nota de resumo no vault (plano, provas, horas por matéria), para o Claude Code continuar enxergando tudo. |
@@ -33,7 +33,7 @@ Ficaram de fora: caderno de erros e contador de tentativas.
 **Bloqueio agendado (pedido em 2026-11-08, ainda não feito):** o bloqueio de sites e apps liga sozinho em dias e horários configurados no app, mesmo sem o timer rodando.
 - Os dias e horários são editáveis em Ajustes.
 - Dentro do horário, só termina antes do fim se a meta do dia for batida, pela mesma regra da trava. Em dia sem meta, não bloqueia.
-- Junto com ele: enquanto houver bloqueio (sessão ou agendado), as listas de sites e apps e a agenda ficam travadas em Ajustes. Sem isso, dá para tirar o Instagram da lista e furar o bloqueio.
+- Junto com ele: enquanto houver bloqueio agendado, a agenda fica travada em Ajustes, como as listas já ficam na sessão (desde 2026-11-10, durante a sessão as listas de sites e apps só aceitam acréscimos).
 
 ## Entregas
 Em 2026-11-08 a ordem mudou para seguir o calendário das provas: o plano do semestre já estava importado, então ler o PDF do plano de ensino só ajuda no começo de 2027/1.
@@ -53,7 +53,9 @@ Em 2026-11-08 a ordem mudou para seguir o calendário das provas: o plano do sem
 - Não bloqueia o celular. Para ele, use o Bem-estar digital (Android) ou o Tempo de Uso (iPhone).
 - Só o Brave e o Chrome são reiniciados. Outro navegador com a aba já aberta continua conectado até recarregar a página (as conexões novas são bloqueadas em qualquer navegador).
 - Uma VPN ou um proxy que resolva os endereços fora do PC passa por cima do hosts.
-- Hoje, as listas de sites e apps podem ser editadas no meio da sessão. A trava delas vem junto com o bloqueio agendado.
+- Durante a sessão, as listas de sites e apps só aceitam acréscimos (tirar um item furaria o bloqueio). O processo principal garante isso, não só a tela.
+- O serviço só libera os sites com um pedido bem formado. Se o `pedido.json` sumir ou vier quebrado, o bloqueio fica como estava. Se o serviço não responder ao encerrar, o app avisa (não finge que liberou), e o pedido fica salvo para quando ele voltar.
+- Com a sessão contando, o app pede ao Windows para não dormir sozinho (a tela ainda apaga), porque o Daniel resolve exercício no papel. Se o PC dormir mesmo assim (tampa fechada, suspender), esse tempo não conta e a sessão volta pausada.
 - Quem tem admin no PC consegue desfazer o bloqueio. A trava serve contra o impulso, não contra a decisão de parar.
 - A nota do simulado é uma estimativa: a IA pode errar conta ou ler mal a letra. A tela diz isso e mostra o que ela considerou certo e errado em cada questão.
 - A IA usa o limite da assinatura do Claude. Se ele acabar, o app avisa e a tarefa fica para depois.

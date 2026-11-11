@@ -166,6 +166,7 @@ export function dadosFalsosDeCanvas(repo: Repositorio): void {
     pontos: null,
     nota: null,
     conteudo: '',
+    entregue: false,
     ...o
   })
   const p3 = repo.eventos().find((e) => e.materiaId === calculo.id && e.tipo === 'prova' && e.nota === null)
@@ -173,11 +174,24 @@ export function dadosFalsosDeCanvas(repo: Repositorio): void {
     item({ chave: 'tarefa:9001', cursoId: 101, titulo: 'P3 - Cálculo I', tipo: 'prova', data: p3?.data ?? null, pontos: 25 }),
     item({ chave: 'tarefa:9002', cursoId: 101, titulo: 'Lista 7 - Otimização', data: '2026-11-18', pontos: 2, conteudo: 'Exercícios 4.7: 3, 5, 9, 14 e 21.' }),
     item({ chave: 'tarefa:9003', cursoId: 101, titulo: 'Fórum de dúvidas', pontos: 0 }),
+    // Já entregue: não pode aparecer na revisão.
+    item({ chave: 'tarefa:9007', cursoId: 101, titulo: 'Lista 6 - Derivadas', data: '2026-11-12', pontos: 2, entregue: true }),
     item({ chave: 'tarefa:9004', cursoId: 102, titulo: 'Prova 3', tipo: 'prova', data: '2026-12-01', pontos: 30 }),
     item({ chave: 'tarefa:9005', cursoId: 103, titulo: 'Trabalho prático 2: árvores AVL', data: '2026-11-27', pontos: 15 }),
     item({ chave: 'evento:9006', cursoId: 103, titulo: 'Prova 2 de AED II', tipo: 'prova', data: '2026-12-03' })
   ]
-  const vinculos = { 'curso:101': calculo.id, 'curso:102': arquitetura.id }
+  // Atividade já ligada e entregue: fica riscada no Calendário e fora dos avisos de cima.
+  const lista5 = repo.salvarEvento({
+    materiaId: calculo.id,
+    data: '2026-11-12',
+    titulo: 'Lista 5 - Derivadas',
+    tipo: 'atividade',
+    pontos: 2,
+    meta: null,
+    nota: null,
+    entregue: true
+  })
+  const vinculos = { 'curso:101': calculo.id, 'curso:102': arquitetura.id, 'tarefa:9008': lista5 }
   const r = compararCanvas({ cursos, itens }, { materias: repo.materias(), eventos: repo.eventos(), vinculos })
   repo.gravarKv('canvas_vinculos', vinculos)
   repo.gravarKv('revisao_canvas', { criadaEm: Date.now(), cursos: r.cursos, itens: r.itens })
@@ -323,8 +337,9 @@ export function dadosFalsosDeAula(repo: Repositorio, agora: number): void {
         { de: 'aluno', texto: 'Deu y′ = (2y − x²) / (y² − x).', quando: agora - 20 * 60_000, fotos: [], exercicio: 4 },
         {
           de: 'professor',
+          // Com "\n" escrito como texto, como as respostas salvas antes da correção do prompt: a tela conserta.
           texto:
-            'Quase. A estrutura está certa (juntar os y′ de um lado e isolar), mas o 6xy pede a regra do produto: a derivada é 6y + 6x · y′. Em algum passo você usou 3x · y′, por isso apareceu y² − x no denominador em vez de y² − 2x.\n\nRefaça só o lado direito com calma. Marquei como errado; o exercício 5 usa a mesma ideia e é um bom treino.',
+            'Quase. A estrutura está certa (juntar os y′ de um lado e isolar), mas o 6xy pede a **regra do produto**.\\n\\n1. Derive os dois lados:\\n3x² + 3y² · y′ = 6y + 6x · y′\\n2. Junte os y′ de um lado:\\ny′ (3y² − 6x) = 6y − 3x²\\n3. Isole e simplifique por 3:\\n**y′ = (2y − x²) / (y² − 2x)**\\n\\nNo seu apareceu y² − x no denominador: em algum passo o 6x virou 3x. Marquei como errado; o exercício 5 usa a mesma ideia e é um bom treino.',
           quando: agora - 19 * 60_000,
           fotos: [],
           exercicio: 4

@@ -61,7 +61,13 @@ type Assignment = {
   due_at?: string | null
   points_possible?: number | null
   grading_type?: string
-  submission?: { score?: number | null; workflow_state?: string } | null
+  submission?: { score?: number | null; workflow_state?: string; submitted_at?: string | null; excused?: boolean | null } | null
+}
+
+/** Entregue: o aluno mandou (submitted, pending_review), o professor já corrigiu (graded) ou dispensou (excused). */
+export function foiEntregue(s: Assignment['submission']): boolean {
+  if (!s) return false
+  return Boolean(s.submitted_at) || s.excused === true || ['submitted', 'pending_review', 'graded'].includes(s.workflow_state ?? '')
 }
 type CalendarEvent = { id: number; title?: string; description?: string | null; start_at?: string | null; all_day_date?: string | null; context_code?: string }
 type FileInfo = { id: number; display_name?: string; filename?: string; size?: number; 'content-type'?: string; url?: string }
@@ -159,7 +165,8 @@ export class ClienteCanvas {
           data: diaDoCanvas(a.due_at),
           pontos: pontos !== null && pontos > 0 ? pontos : null,
           nota,
-          conteudo: textoDeHtml(a.description)
+          conteudo: textoDeHtml(a.description),
+          entregue: foiEntregue(a.submission)
         }
       })
   }
@@ -186,7 +193,8 @@ export class ClienteCanvas {
           data: diaDoCanvas(e.all_day_date ?? e.start_at),
           pontos: null,
           nota: null,
-          conteudo: textoDeHtml(e.description)
+          conteudo: textoDeHtml(e.description),
+          entregue: false
         })
       }
     }

@@ -97,9 +97,9 @@ export function Calendario({ estado }: { estado: Estado }) {
                   {doDia.map((e) => (
                     <button
                       key={e.id}
-                      className="celula__evento"
+                      className={`celula__evento ${e.entregue ? 'celula__evento--entregue' : ''}`}
                       style={estiloMateria(materias, e.materiaId)}
-                      title={e.titulo}
+                      title={e.entregue ? `${e.titulo} (já entregue no Canvas)` : e.titulo}
                       onClick={(ev) => {
                         ev.stopPropagation()
                         setEditando({ evento: e, data: d })

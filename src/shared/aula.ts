@@ -1,9 +1,18 @@
 // A aula da IA em Markdown, no mesmo formato das notas de estudo do vault (a ideia, as fórmulas, os exemplos,
 // as armadilhas, os exercícios e o gabarito no fim). Sem rede e sem disco: só texto, para dar para testar.
-import type { Aula, SituacaoExercicio } from './tipos'
+import type { Aula, ConteudoAula, SituacaoExercicio } from './tipos'
 import { dataLocal, diaMes } from './regras'
+import { normalizarTextoIa } from './texto'
 
 const SITUACAO: Record<SituacaoExercicio, string> = { acertei: 'acertei', parcial: 'acertei em parte', errei: 'errei' }
+
+/**
+ * A aula que vai para o professor corrigir ou tirar dúvida: os exercícios vão sem a resolução e sem a resposta,
+ * para ele não entregar o gabarito de um exercício que o aluno ainda está tentando.
+ */
+export function aulaSemGabarito(c: ConteudoAula): ConteudoAula {
+  return { ...c, exercicios: c.exercicios.map((e) => ({ ...e, resolucao: '', resposta: '' })) }
+}
 
 /** Nome de arquivo que o Windows e o Obsidian aceitam: "ERS - Diagrama de classes.md". */
 export function nomeArquivoAula(sigla: string, titulo: string): string {
@@ -74,5 +83,6 @@ export function aulaEmMarkdown(a: Aula, materia: string): string {
       l.push(`${quem} ${m.texto || ''}${extra}`.trimEnd(), '')
     }
   }
-  return l.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
+  // As aulas salvas antes da correção do prompt podem ter "\n" escrito como texto.
+  return normalizarTextoIa(l.join('\n')).replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
 }

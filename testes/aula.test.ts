@@ -267,6 +267,11 @@ describe('aula com a IA', () => {
     expect(c.pedido).toContain('Deu cos(x²)')
     expect(c.pedido).toContain('Slides 3.4.pdf')
     expect(c.esforco).toBe('medium')
+    // O professor recebe a aula sem as resoluções; do exercício escolhido, só o resultado, para conferir.
+    expect(c.pedido).not.toContain('cos(x²)·2x')
+    expect(c.pedido).not.toContain('2e^(2x)')
+    expect(c.pedido).toContain('Resultado final do exercício 1 no gabarito da aula, só para você conferir: 2x cos(x²)')
+    expect(c.pedido).toContain('Derive e^(2x).') // os enunciados e as dicas continuam
 
     const aula = m.repo.aula(aulaId)!
     expect(aula.progresso).toEqual({ '1': 'errei' })
@@ -283,6 +288,8 @@ describe('aula com a IA', () => {
     const aulaId = m.repo.aulas()[0].id
     expect(await m.ia.perguntar({ aulaId, texto: 'Por quê?', fotos: [], exercicio: null })).toEqual({ ok: false, mensagem: 'Sem internet.' })
     expect(m.repo.aula(aulaId)!.conversa).toEqual([])
+    // Sem exercício escolhido, nem o resultado vai.
+    expect(m.chamadas.at(-1)!.pedido).not.toContain('2x cos(x²)')
     expect(await m.ia.perguntar({ aulaId, texto: ' ', fotos: [], exercicio: null })).toMatchObject({ ok: false })
     expect(await m.ia.perguntar({ aulaId, texto: 'x', fotos: ['C:/foto.heic'], exercicio: null })).toMatchObject({
       ok: false,

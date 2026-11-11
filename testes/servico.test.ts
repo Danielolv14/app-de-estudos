@@ -1,6 +1,6 @@
 // Testa o serviço de bloqueio de verdade (o .ps1), mas apontando para um hosts falso numa pasta temporária.
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -95,6 +95,34 @@ describe('serviço de bloqueio (hosts)', () => {
     rodar()
     expect(lerHosts()).toBe(ORIGINAL)
     expect(status()).toMatchObject({ versao: 112, bloqueado: false })
+  })
+
+  it('pedido quebrado ou apagado não libera: o bloqueio fica como estava', () => {
+    pedir({ bloquear: true, dominios: ['instagram.com'], versao: 40 })
+    rodar()
+    const bloqueado = lerHosts()
+    expect(bloqueado).toContain('0.0.0.0 instagram.com')
+
+    writeFileSync(join(pasta, 'pedido.json'), '{"bloquear": fal')
+    rodar()
+    expect(lerHosts()).toBe(bloqueado)
+    expect(status()).toMatchObject({ bloqueado: true, erro: expect.stringContaining('ilegivel') })
+
+    // "bloquear" precisa ser true ou false de verdade: o texto "false" não vale.
+    pedir({ bloquear: 'false', dominios: [], versao: 41 })
+    rodar()
+    expect(lerHosts()).toBe(bloqueado)
+
+    rmSync(join(pasta, 'pedido.json'))
+    rodar()
+    expect(lerHosts()).toBe(bloqueado)
+    expect(status().bloqueado).toBe(true)
+
+    // Só o pedido bem formado do app libera.
+    pedir({ bloquear: false, dominios: [], versao: 42 })
+    rodar()
+    expect(lerHosts()).toBe(ORIGINAL)
+    expect(status()).toMatchObject({ versao: 42, bloqueado: false, erro: null })
   })
 
   it('recoloca o bloco se alguém apagar no meio da sessão', () => {

@@ -1,5 +1,6 @@
 // Regras puras do app (sem Electron nem banco), para poderem ser testadas sozinhas.
 import type { EstadoLembrete, Evento, Lembrete, Sessao, SessaoAtiva, Tarefa } from './tipos'
+import { tituloSemMateria } from './sigla'
 
 const MINUTO = 60_000
 const DIA = 86_400_000
@@ -96,12 +97,37 @@ export function podeEncerrarLivre(metaMin: number, estudadoMsHoje: number): bool
 
 export type EventoComData = Evento & { data: string }
 
-/** Próximas avaliações (provas, atividades e reavaliações) com data, a partir de hoje, em ordem. */
+/** Próximas avaliações (provas, atividades e reavaliações) com data, a partir de hoje, em ordem. A já entregue fica de fora. */
 export function proximasAvaliacoes(eventos: Evento[], hoje: string): EventoComData[] {
   return eventos
     .filter((e): e is EventoComData => e.data !== null)
-    .filter((e) => e.tipo !== 'aula' && e.tipo !== 'outro' && diasAte(hoje, e.data) >= 0)
+    .filter((e) => e.tipo !== 'aula' && e.tipo !== 'outro' && !e.entregue && diasAte(hoje, e.data) >= 0)
     .sort((a, b) => a.data.localeCompare(b.data) || a.id - b.id)
+}
+
+// ---------- Listas do bloqueio ----------
+
+export type ListasBloqueio = { dominios: string[]; processos: string[]; pastasBloqueadas: string[] }
+
+const igualSemCaixa = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/** O que estava nas listas e saiu (sem diferenciar maiúsculas). */
+export function removidosDasListas(antes: ListasBloqueio, depois: ListasBloqueio): string[] {
+  const chaves = ['dominios', 'processos', 'pastasBloqueadas'] as const
+  return chaves.flatMap((k) => antes[k].filter((x) => !depois[k].some((y) => igualSemCaixa(x, y))))
+}
+
+/**
+ * Durante a sessão, as listas só crescem: tirar o Instagram (ou um jogo) no meio furaria o bloqueio.
+ * O que já estava fica, e o que é novo entra no fim.
+ */
+export function listasSoCrescem(antes: ListasBloqueio, depois: ListasBloqueio): ListasBloqueio {
+  const juntar = (a: string[], b: string[]) => [...a, ...b.filter((y) => !a.some((x) => igualSemCaixa(x, y)))]
+  return {
+    dominios: juntar(antes.dominios, depois.dominios),
+    processos: juntar(antes.processos, depois.processos),
+    pastasBloqueadas: juntar(antes.pastasBloqueadas, depois.pastasBloqueadas)
+  }
 }
 
 // ---------- Tarefas atrasadas ----------
@@ -112,15 +138,20 @@ export function proximoDiaDaMateria(tarefas: Tarefa[], materiaId: number | null,
   return datas.length === 0 ? null : datas.reduce((a, b) => (b < a ? b : a))
 }
 
-/** Frase que precisa ser digitada para encerrar antes da meta. */
-export function fraseTrava(hoje: string, faltamMin: number, proxima: EventoComData | null): string {
+/**
+ * Frase que precisa ser digitada para encerrar antes da meta. Com a matéria, a avaliação leva o nome dela
+ * ("Prova 2" vira "Prova 2 de Cálculo"), sem repetir quando o título já termina com ele.
+ */
+export function fraseTrava(hoje: string, faltamMin: number, proxima: EventoComData | null, nomeMateria: string | null = null): string {
   const tempo = formatarDuracao(faltamMin * MINUTO)
   if (proxima) {
     const dias = diasAte(hoje, proxima.data)
+    const nome = nomeMateria?.trim()
+    const titulo = nome ? `${tituloSemMateria(proxima.titulo, nome)} de ${nome}` : proxima.titulo
     const quando =
       dias === 0
-        ? `mesmo com a ${proxima.titulo} sendo hoje`
-        : `mesmo faltando ${dias} ${dias === 1 ? 'dia' : 'dias'} para a ${proxima.titulo}`
+        ? `mesmo com a ${titulo} sendo hoje`
+        : `mesmo faltando ${dias} ${dias === 1 ? 'dia' : 'dias'} para a ${titulo}`
     return `Vou parar ${tempo} antes da meta de hoje, ${quando}.`
   }
   return `Vou parar ${tempo} antes da meta de hoje e aceito que o plano vai atrasar.`

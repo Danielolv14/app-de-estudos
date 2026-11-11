@@ -35,7 +35,7 @@ export type Api = {
   marcarTarefa(id: number, feita: boolean): Promise<void>
   moverTarefa(id: number, data: string): Promise<void>
   removerTarefa(id: number): Promise<void>
-  salvarEvento(e: Omit<Evento, 'id' | 'conteudo'> & { id?: number; conteudo?: string }): Promise<number>
+  salvarEvento(e: Omit<Evento, 'id' | 'conteudo' | 'entregue'> & { id?: number; conteudo?: string; entregue?: boolean }): Promise<number>
   removerEvento(id: number): Promise<void>
   salvarMateria(m: Pick<Materia, 'nome' | 'cor'> & { id?: number; bibliografia?: string; sigla?: string }): Promise<number>
   removerMateria(id: number): Promise<void>

@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import type { BlocoSemana, Config, Estado, Materia } from '@shared/tipos'
 import { CORES_MATERIA } from '@shared/padroes'
 import { siglaAutomatica } from '@shared/sigla'
-import { formatarDuracao } from '@shared/regras'
+import { formatarDuracao, removidosDasListas } from '@shared/regras'
 import { Led, Modal } from '../componentes/Basicos'
 import { IconeFechar, IconeMais } from '../componentes/Icones'
 import { SecaoCanvas } from '../componentes/Canvas'
@@ -29,6 +29,9 @@ export function Ajustes({ estado }: { estado: Estado }) {
   const [pastas, setPastas] = useState(config.pastasBloqueadas.join('\n'))
   const listasMudaram =
     dominios !== config.dominios.join('\n') || processos !== config.processos.join('\n') || pastas !== config.pastasBloqueadas.join('\n')
+  const novasListas = { dominios: linhas(dominios).map((d) => d.toLowerCase()), processos: linhas(processos), pastasBloqueadas: linhas(pastas) }
+  // Durante a sessão, as listas só aceitam acréscimos (o processo principal também garante isso).
+  const tirados = estado.ativa ? removidosDasListas(config, novasListas) : []
 
   async function instalar(remover = false) {
     setInstalando(true)
@@ -43,10 +46,12 @@ export function Ajustes({ estado }: { estado: Estado }) {
     : !bloqueio.vivo
       ? { led: true, cor: 'ambar' as const, titulo: 'O serviço não está respondendo', texto: 'Reinicie o PC. Se continuar assim, instale de novo.' }
       : bloqueio.desatualizado
-        ? { led: true, cor: 'ambar' as const, titulo: 'O serviço precisa ser atualizado', texto: 'Esta versão também protege o bloqueio no Brave. Clique em Reinstalar e confirme a janela de administrador.' }
-        : bloqueio.bloqueado
-        ? { led: true, cor: 'vermelho' as const, titulo: 'Bloqueando agora', texto: 'A sessão está em andamento. Os sites voltam quando ela terminar.' }
-        : { led: true, cor: 'verde' as const, titulo: 'Pronto para bloquear', texto: 'Os sites são bloqueados quando você começa a estudar.' }
+        ? { led: true, cor: 'ambar' as const, titulo: 'O serviço precisa ser atualizado', texto: 'A versão nova não libera os sites por engano se o pedido do app chegar quebrado. Clique em Reinstalar e confirme a janela de administrador.' }
+        : bloqueio.bloqueado && !estado.ativa
+          ? { led: true, cor: 'ambar' as const, titulo: 'Ainda bloqueando', texto: 'A sessão acabou, mas o serviço ainda não tirou o bloqueio. Se não sair em alguns segundos, clique em Reinstalar.' }
+          : bloqueio.bloqueado
+            ? { led: true, cor: 'vermelho' as const, titulo: 'Bloqueando agora', texto: 'A sessão está em andamento. Os sites voltam quando ela terminar.' }
+            : { led: true, cor: 'verde' as const, titulo: 'Pronto para bloquear', texto: 'Os sites são bloqueados quando você começa a estudar.' }
 
   return (
     <div className="ajustes">
@@ -110,11 +115,14 @@ export function Ajustes({ estado }: { estado: Estado }) {
             <textarea className="campo-area campo-area--codigo" rows={3} value={pastas} onChange={(e) => setPastas(e.target.value)} />
           </label>
           <div className="form__botoes">
-            <button
-              className="tecla tecla--pequena tecla--ambar"
-              disabled={!listasMudaram}
-              onClick={() => salvar({ dominios: linhas(dominios).map((d) => d.toLowerCase()), processos: linhas(processos), pastasBloqueadas: linhas(pastas) })}
-            >
+            {estado.ativa && (
+              <p className={`esquerda ${tirados.length > 0 ? 'erro-ia' : 'mudo'}`} style={{ margin: '0 auto 0 0', alignSelf: 'center' }}>
+                {tirados.length > 0
+                  ? `Durante a sessão dá para acrescentar, mas não tirar. Volte com ${tirados.join(', ')}.`
+                  : 'Durante a sessão, as listas só aceitam acréscimos.'}
+              </p>
+            )}
+            <button className="tecla tecla--pequena tecla--ambar" disabled={!listasMudaram || tirados.length > 0} onClick={() => salvar(novasListas)}>
               Salvar as listas
             </button>
           </div>

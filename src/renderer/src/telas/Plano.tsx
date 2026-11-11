@@ -142,9 +142,14 @@ export function Plano({ estado }: { estado: Estado }) {
                     {doDia.length > 0 && (
                       <div className="dia__eventos">
                         {doDia.map((e) => (
-                          <span key={e.id} className={`selo ${e.tipo !== 'aula' && e.tipo !== 'outro' ? 'selo--prova' : ''}`} style={estiloMateria(materias, e.materiaId)}>
+                          <span
+                            key={e.id}
+                            className={`selo ${e.entregue ? 'selo--entregue' : e.tipo !== 'aula' && e.tipo !== 'outro' ? 'selo--prova' : ''}`}
+                            style={estiloMateria(materias, e.materiaId)}
+                          >
                             <span className="ponto" />
                             {e.titulo}
+                            {e.entregue && ' · entregue'}
                           </span>
                         ))}
                       </div>

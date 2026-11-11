@@ -8,7 +8,8 @@ e bloqueio de Instagram, WhatsApp Web e jogos enquanto a sessão estiver aberta.
 
 - **Timer:** conta para cima, ligado a uma tarefa do plano. Pausar não desbloqueia nada.
 - **Meta do dia:** soma das horas previstas nas tarefas do dia (dá para ajustar na tela Plano).
-- **Trava:** antes de bater a meta, encerrar pede uma frase digitada (colar não funciona).
+- **Trava:** antes de bater a meta, encerrar pede uma frase digitada (colar não funciona), com os dias até a próxima
+  avaliação da matéria da sessão ("...para a Prova 2 de Cálculo").
 - **Check-in:** ao encerrar, dois campos opcionais (o que fez e onde travou) ficam guardados na sessão, aparecem na
   tela Plano e vão para o resumo do vault.
 - **Notas:** a tela Notas mostra quanto falta para chegar a 60 em cada matéria e calcula a meta de cada avaliação
@@ -17,7 +18,10 @@ e bloqueio de Instagram, WhatsApp Web e jogos enquanto a sessão estiver aberta.
 - **Tarefas atrasadas:** um botão passa a tarefa para hoje ou para o próximo dia que já tem tarefa da mesma matéria.
 - **Bloqueio de sites:** um serviço do Windows (tarefa agendada que roda como SYSTEM) mantém um bloco no arquivo
   `hosts` enquanto a sessão estiver aberta. O app só escreve um pedido em `C:\ProgramData\AppDeEstudos\pedido.json`;
-  o serviço aceita apenas nomes de domínio e sempre aponta para `0.0.0.0`.
+  o serviço aceita apenas nomes de domínio e sempre aponta para `0.0.0.0`. Pedido sumido ou quebrado não libera
+  (o bloqueio fica como estava), e durante a sessão as listas de Ajustes só aceitam acréscimos.
+- **PC dormindo:** com a sessão contando, o PC não dorme sozinho (a tela apaga). Se dormir mesmo assim, esse tempo
+  não conta e a sessão volta pausada.
 - **Abas já abertas:** o hosts não derruba conexões abertas, então o app reinicia o Brave (e o Chrome, se estiver
   aberto) no começo da sessão, restaurando as abas.
 - **Brave:** enquanto bloqueia, o serviço liga duas políticas em `HKLM\SOFTWARE\Policies\BraveSoftware\Brave`. A
@@ -59,8 +63,9 @@ PC** (`claude -p`), com a assinatura do Daniel. Não tem chave de API.
 - **Aula (a IA como professor):** no Foco, "Preparar a aula" (ou a tela **Aula**) manda o tema da tarefa, a próxima
   avaliação, onde o Daniel travou e até 6 PDFs (o app sugere os do Canvas com o nome parecido com o tema). A IA
   devolve a ordem de estudo, as partes com fórmulas e exemplo resolvido, as armadilhas e de 5 a 10 exercícios com
-  dica e gabarito escondidos. Embaixo, a conversa com o professor: a resposta de um exercício (texto ou foto) volta
-  corrigida e marca o exercício (certo, em parte, errado). "Mais exercícios" foca nos errados, e "Salvar no
+  dica e gabarito escondidos (o gabarito abre depois de uma tentativa). Embaixo, a conversa com o professor: a
+  resposta de um exercício (texto ou foto) volta corrigida e marca o exercício (certo, em parte, errado). Um atalho
+  no canto leva até o professor, e o texto da IA aparece arrumado (passos, listas, negrito e expoente). "Mais exercícios" foca nos errados, e "Salvar no
   Obsidian" grava a aula em `Aulas do app/` ao lado do resumo do vault. Tabela `aulas`; o material fica em
   `%APPDATA%\App de Estudos\aulas\<id>` para as perguntas depois.
 - **Sigla da matéria:** os avisos de cima mostram a sigla (CAL, ERS, IHC), automática pelo nome ou escrita em
@@ -80,6 +85,8 @@ O app lê o Canvas (`https://pucminas.instructure.com`, pela API REST v1) com um
   já está ligado tem a data, o valor e a nota atualizados sozinhos, com um aviso. O que é novo vai para uma revisão no
   Calendário (kv `revisao_canvas`), onde se escolhe a matéria de cada curso, o que entra e com qual avaliação já
   existente juntar (para não duplicar).
+- **Já entregue:** atividade que o Canvas mostra como enviada, corrigida ou dispensada não entra na revisão e sai dos
+  avisos de cima, da trava, do resumo e do Simulado (coluna `eventos.entregue`). No Calendário ela fica riscada.
 - **PDFs:** "Pegar do Canvas" no plano de ensino e "Material de aula do Canvas" no simulado (até 4 PDFs, que a IA lê
   para seguir a notação do professor). Quando o curso esconde a aba Arquivos, a lista vem dos módulos. Os PDFs ficam
   em `%APPDATA%\App de Estudos\canvas\`.

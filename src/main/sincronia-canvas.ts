@@ -238,7 +238,13 @@ export class SincroniaCanvas {
         for (const m of r.mudancas) {
           const e = this.repo.eventos().find((x) => x.id === m.eventoId)
           if (!e) continue
-          this.repo.salvarEvento({ ...e, data: m.data ?? e.data, pontos: m.pontos ?? e.pontos, nota: m.nota ?? e.nota })
+          this.repo.salvarEvento({
+            ...e,
+            data: m.data ?? e.data,
+            pontos: m.pontos ?? e.pontos,
+            nota: m.nota ?? e.nota,
+            entregue: m.entregue ?? e.entregue
+          })
         }
         const antes = revisaoCanvas(this.repo)
         const nova = { cursos: r.cursos, itens: r.itens }

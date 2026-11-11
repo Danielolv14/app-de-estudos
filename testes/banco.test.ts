@@ -106,7 +106,7 @@ describe('banco e repositório', () => {
     const banco = await Banco.abrir(arquivo, wasm)
     const repo = new Repositorio(banco)
     expect(repo.eventos()).toEqual([
-      { id: 7, materiaId: 1, data: '2026-12-01', titulo: 'Prova de Física', tipo: 'prova', pontos: 30, meta: 18, nota: null, conteudo: '' }
+      { id: 7, materiaId: 1, data: '2026-12-01', titulo: 'Prova de Física', tipo: 'prova', pontos: 30, meta: 18, nota: null, conteudo: '', entregue: false }
     ])
     // v1.2: a matéria antiga ganha o semestre vazio, sem bibliografia, e não fica arquivada.
     expect(repo.materias()[0]).toMatchObject({ nome: 'Física', arquivada: false, semestre: '', bibliografia: '' })

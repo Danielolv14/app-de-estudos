@@ -108,7 +108,7 @@ export function Simulado({ estado }: { estado: Estado }) {
 
 function avaliacoesDe(eventos: Evento[], materiaId: number | null, hoje: string): Evento[] {
   return eventos
-    .filter((e) => e.materiaId === materiaId && ehAvaliacao(e) && e.nota === null && (e.data === null || e.data >= hoje))
+    .filter((e) => e.materiaId === materiaId && ehAvaliacao(e) && e.nota === null && !e.entregue && (e.data === null || e.data >= hoje))
     .sort((a, b) => (a.data ?? '9999').localeCompare(b.data ?? '9999'))
 }
 

@@ -12,6 +12,8 @@ export type MudancaCanvas = {
   data?: string | null
   pontos?: number
   nota?: number
+  /** Passou a constar como entregue (ou deixou de constar) no Canvas. Muda sem aviso. */
+  entregue?: boolean
 }
 
 /** Sem acento, minúsculo e sem pontuação, para comparar nomes. */
@@ -158,9 +160,12 @@ export function compararCanvas(
       if (item.data && item.data !== e.data) m.data = item.data
       if (item.pontos !== null && item.pontos > 0 && item.pontos !== e.pontos) m.pontos = item.pontos
       if (item.nota !== null && item.nota !== e.nota) m.nota = item.nota
+      if (item.chave.startsWith('tarefa:') && item.entregue !== e.entregue) m.entregue = item.entregue
       if (Object.keys(m).length > 2) mudancas.push(m)
       continue
     }
+    // O que o Daniel já entregou não vira novidade (nem aviso): não tem mais o que fazer.
+    if (item.entregue) continue
     const candidatos = typeof destino === 'number' ? app.eventos.filter((e) => e.materiaId === destino && !ligados.has(e.id)) : []
     itens.push({ ...item, incluir: incluirPorPadrao(item), juntarCom: sugerirEvento(item, candidatos) })
   }

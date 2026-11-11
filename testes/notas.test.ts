@@ -8,6 +8,7 @@ const av = (titulo: string, tipo: TipoEvento, pontos: number | null, nota: numbe
   materiaId: 1,
   data,
   conteudo: "",
+  entregue: false,
   titulo,
   tipo,
   pontos,

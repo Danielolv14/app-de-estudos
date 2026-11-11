@@ -1,5 +1,6 @@
 // Confere e arruma o que a IA devolve, antes de o app usar. A IA pode errar conta, pular questão,
 // inventar tarefa que não existe ou pôr data no passado: nada disso pode quebrar o app nem estragar o plano.
+import { normalizarTextoIa } from './texto'
 import type {
   AulaLida,
   ConteudoAula,
@@ -22,7 +23,9 @@ import type {
 type Obj = Record<string, unknown>
 const obj = (v: unknown): Obj => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Obj) : {})
 const lista = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
-const texto = (v: unknown, max = 4000): string => (typeof v === 'string' ? v.trim().slice(0, max) : '')
+// "\n" escrito como texto vira quebra de linha (menos num caminho do Windows, como C:\Users\nome).
+const texto = (v: unknown, max = 4000): string =>
+  typeof v === 'string' ? (/^[A-Za-z]:\\/.test(v) ? v : normalizarTextoIa(v)).trim().slice(0, max) : ''
 const numero = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 const umaCasa = (n: number) => Math.round(n * 10) / 10
 

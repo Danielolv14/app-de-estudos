@@ -1,7 +1,7 @@
 {
   "name": "app-de-estudos",
   "productName": "App de Estudos",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Timer, plano, calendário de provas e bloqueio de distrações para estudar.",
   "author": "Daniel Oliveira de Menezes",
   "private": true,

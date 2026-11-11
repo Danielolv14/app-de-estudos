@@ -55,7 +55,8 @@ const paraEvento = (l: Linha): Evento => ({
   pontos: num(l.pontos),
   meta: num(l.meta),
   nota: num(l.nota),
-  conteudo: String(l.conteudo ?? '')
+  conteudo: String(l.conteudo ?? ''),
+  entregue: Number(l.entregue) === 1
 })
 
 const paraSessao = (l: Linha): Sessao => ({
@@ -120,7 +121,7 @@ const paraAula = (l: Linha): Aula => ({
 
 export type NovaTarefa = Omit<Tarefa, 'id' | 'feita' | 'ordem'> & { id?: number; feita?: boolean; ordem?: number }
 /** O conteúdo é opcional para quem salva (nem toda tela manda). */
-export type NovoEvento = Omit<Evento, 'id' | 'conteudo'> & { id?: number; conteudo?: string }
+export type NovoEvento = Omit<Evento, 'id' | 'conteudo' | 'entregue'> & { id?: number; conteudo?: string; entregue?: boolean }
 export type NovaMateria = { id?: number; nome: string; cor: string; bibliografia?: string; sigla?: string }
 export type UsoIa = {
   quando: number
@@ -224,11 +225,12 @@ export class Repositorio {
         [...valores, e.id]
       )
       if (e.conteudo !== undefined) this.banco.executar('UPDATE eventos SET conteudo = ? WHERE id = ?', [e.conteudo, e.id])
+      if (e.entregue !== undefined) this.banco.executar('UPDATE eventos SET entregue = ? WHERE id = ?', [e.entregue ? 1 : 0, e.id])
       return e.id
     }
     return this.banco.executar(
-      'INSERT INTO eventos (materia_id, data, titulo, tipo, pontos, meta, nota, conteudo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [...valores, e.conteudo ?? '']
+      'INSERT INTO eventos (materia_id, data, titulo, tipo, pontos, meta, nota, conteudo, entregue) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [...valores, e.conteudo ?? '', e.entregue ? 1 : 0]
     )
   }
 

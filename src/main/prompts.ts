@@ -12,7 +12,11 @@ const objeto = (props: Record<string, object>) => ({
   additionalProperties: false
 })
 
-const ESCRITA = `Escreva em português do Brasil. Matemática em texto simples com Unicode (x², x³, √(x+1), f'(x), dy/dx, ∫, lim x→0, π, ≤, ≥), sem LaTeX e sem Markdown. Use \\n para quebrar linha.`
+// Não escreva "use \n para quebrar linha" aqui: a IA obedece ao pé da letra e manda a barra e o n como texto.
+const ESCRITA = `Escreva em português do Brasil. Matemática em texto simples com Unicode (x², x³, √(x+1), f'(x), dy/dx, ∫, lim x→0, π, ≤, ≥), sem LaTeX e sem Markdown. Separe os parágrafos com uma linha em branco.`
+
+/** Na aula e na conversa com o professor, a tela mostra o texto arrumado (componentes/TextoRico). */
+const ESCRITA_AULA = `Escreva em português do Brasil. Matemática em texto simples com Unicode (x², x³, √(x+1), f'(x), dy/dx, ∫, lim x→0, π, ≤, ≥); expoente que não existe em Unicode vai com ^ e parênteses (e^(2x), x^(n+1)), e índice com _ (x_1, a_n). Sem LaTeX. Organize o texto para ler fácil: parágrafos curtos separados por uma linha em branco; passos numerados ("1.", "2.") com a conta de cada passo na linha de baixo, uma igualdade por linha; listas com "- "; e **negrito** só no resultado final ou na ideia principal. Sem títulos com # e sem tabelas.`
 
 // ---------- Teste ----------
 
@@ -286,13 +290,14 @@ export function pedidoAula(d: DadosAula): string {
     'Como montar:',
     '- "titulo": o tema em poucas palavras (ex.: "Desempenho e Lei de Amdahl").',
     '- "objetivo": uma frase com o que ele vai saber fazer no fim da sessão.',
-    '- "roteiro": de 3 a 6 passos da ordem de estudo, com o tempo de cada um, cabendo na sessão (ex.: "Parte 1, desempenho da CPU (20 min)", "Exercícios 1 a 4 (30 min)", "Corrigir com o gabarito (10 min)").',
-    '- "secoes": de 2 a 6 partes, do básico ao que mais cai. Em cada uma, "texto" explica como um bom professor explica para quem está vendo pela primeira vez: a ideia primeiro (com uma analogia quando ajudar), depois o detalhe e o que costuma cair em prova. "formulas" traz as fórmulas e regras para decorar, uma por item (lista vazia se não houver). "exemplo" é um exemplo resolvido passo a passo, com as contas (null se a parte for só teoria).',
+    '- "roteiro": de 3 a 6 passos da ordem de estudo, com o tempo de cada um, cabendo na sessão (ex.: "Parte 1, desempenho da CPU (20 min)", "Exercícios 1 a 4 no papel, sem olhar o gabarito (30 min)", "Mandar as respostas ao professor e refazer o que errou (15 min)").',
+    '- "secoes": de 2 a 6 partes, do básico ao que mais cai. Em cada uma, "texto" explica como um bom professor explica para quem está vendo pela primeira vez: a ideia primeiro (com uma analogia quando ajudar, dizendo numa frase onde ela deixa de valer), depois o detalhe, as condições em que a regra vale e o que costuma cair em prova. "formulas" traz as fórmulas e regras para decorar, uma por item (lista vazia se não houver). "exemplo" é um exemplo resolvido passo a passo (null se a parte for só teoria).',
+    '- Contas, no exemplo e na resolução: passos numerados, uma igualdade por linha, sem pular álgebra, e no fim a conferência do resultado (ex.: derivar o que integrou, substituir o valor achado).',
     '- "armadilhas": até 6 erros comuns em prova e como evitar cada um.',
-    '- "exercicios": de 5 a 10, do mais fácil ao mais difícil, cobrindo todas as partes. Cada um com "nivel", "dica" (um empurrão que não entrega a resposta), "resolucao" passo a passo e "resposta" (só o resultado final). Resolva cada exercício você mesmo e confira a conta antes de responder. O aluno só vê a dica e a resolução quando pedir.',
+    '- "exercicios": de 5 a 10, do mais fácil ao mais difícil, cobrindo todas as partes. Cada um com "nivel", "dica" (um empurrão que não entrega a resposta), "resolucao" passo a passo e "resposta" (só o resultado final). No enunciado, deixe claro o que achar e se a resposta é um valor, uma expressão ou uma justificativa. Resolva cada exercício você mesmo e confira a conta antes de responder. O aluno vê a dica quando pede, e a resolução só depois de tentar no papel.',
     '- "fontes": os nomes dos arquivos que você usou de verdade (só o nome, sem a pasta).',
     '- "avisos": o que o aluno precisa saber sobre o material (vazio se não houver nada).',
-    `- ${ESCRITA}`
+    `- ${ESCRITA_AULA}`
   )
   return linhas.join('\n')
 }
@@ -306,7 +311,7 @@ export const FORMATO_PROFESSOR = objeto({
 export type DadosProfessor = {
   materia: string
   tema: string
-  /** A aula em JSON (com as resoluções). */
+  /** A aula em JSON, sem a resolução e a resposta dos exercícios. */
   aula: string
   materiais: string[]
   /** Últimas mensagens, já no formato "Aluno: ..." ou "Professor: ...". */
@@ -314,12 +319,14 @@ export type DadosProfessor = {
   texto: string
   fotos: string[]
   exercicio: number | null
+  /** Resultado final do exercício escolhido, do gabarito da aula: só para o professor conferir a correção. */
+  referencia: string | null
 }
 
 export function pedidoProfessor(d: DadosProfessor): string {
   const linhas = [
     `Você é o professor particular de um aluno de graduação (PUC Minas), no meio de uma sessão de estudo de ${d.materia} sobre "${d.tema}".`,
-    'A aula que você preparou para ele, em JSON (ele só vê a dica e a resolução de cada exercício quando pede):',
+    'A aula que você preparou para ele, em JSON. Os exercícios vão sem a resolução: ele resolve no papel, e a resolução só aparece para ele depois que ele tenta.',
     d.aula
   ]
   if (d.materiais.length > 0)
@@ -328,14 +335,22 @@ export function pedidoProfessor(d: DadosProfessor): string {
   linhas.push('', `Agora o aluno escreveu: ${d.texto.trim() || '(sem texto, só as fotos)'}`)
   if (d.exercicio !== null) linhas.push(`Ele disse que é sobre o exercício ${d.exercicio}.`)
   if (d.fotos.length > 0) linhas.push('Ele mandou fotos da resolução no papel. Leia todas com a ferramenta Read:', ...d.fotos.map((f) => `- "${f}"`))
+  if (d.exercicio !== null && d.referencia)
+    linhas.push(
+      '',
+      `Resultado final do exercício ${d.exercicio} no gabarito da aula, só para você conferir: ${d.referencia}`,
+      'Resolva você mesmo antes de olhar esse resultado. Se a sua conta der diferente, confira as duas e diga qual está errada. Não conte esse resultado se ele só pediu ajuda para começar.'
+    )
   linhas.push(
     '',
     'Responda como um bom professor, em "resposta":',
-    '- Se for a resolução de um exercício: resolva de novo antes de olhar a dele, diga se está certo, aponte exatamente o passo em que errou e por quê, e mostre o caminho certo. Preencha "exercicio" com o número e "situacao" com acertei, parcial ou errei. Se a mensagem não for a resolução de um exercício, os dois ficam null.',
-    '- Se for dúvida: explique de outro jeito, mais simples e com um exemplo pequeno, sem repetir o texto da aula.',
-    '- Se ele pedir mais exercícios, um resumo ou outro exemplo, faça na própria resposta (com a resposta final de cada exercício novo no fim, separada).',
+    '- Se for a resolução de um exercício (ele tentou): resolva você mesmo sem se guiar pela dele, diga se está certo, aponte exatamente o passo em que errou e por quê, e mostre o caminho certo. Preencha "exercicio" com o número e "situacao" com acertei, parcial ou errei. Se a mensagem não for a resolução de um exercício, os dois ficam null.',
+    '- Se ele travou num exercício que ainda não tentou (ex.: "não sei começar o 3"): dê só o próximo passo, ou uma pergunta que o leve até ele. Não entregue a resolução nem o resultado; peça para ele continuar no papel e mandar.',
+    '- Se for dúvida da matéria: explique de outro jeito, mais simples e com um exemplo pequeno, sem repetir o texto da aula.',
+    '- Se ele pedir mais exercícios, diga para usar o botão "Mais exercícios" da aula, onde a resolução fica escondida até ele tentar. Se pedir um resumo ou outro exemplo, faça na própria resposta.',
+    '- Contas: passos numerados, sem pular álgebra.',
     '- Direto ao ponto: no máximo uns 12 parágrafos curtos. Se a foto estiver ilegível, diga o que não deu para ler.',
-    `- ${ESCRITA}`
+    `- ${ESCRITA_AULA}`
   )
   return linhas.join('\n')
 }
@@ -356,7 +371,7 @@ export function pedidoMaisExercicios(d: DadosMaisExercicios): string {
     '',
     'Crie de 3 a 6 exercícios novos, diferentes dos que já estão na aula, focando no que ele errou (ou, se não errou nada, um pouco mais difíceis), do mais fácil ao mais difícil.',
     'Cada um com "origem" (de onde veio, ou "novo"), "nivel", "dica" (sem entregar a resposta), "resolucao" passo a passo e "resposta" (só o resultado final). Resolva cada um você mesmo e confira a conta.',
-    `- ${ESCRITA}`
+    `- ${ESCRITA_AULA}`
   )
   return linhas.join('\n')
 }

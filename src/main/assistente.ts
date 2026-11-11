@@ -16,6 +16,7 @@ import {
   validarProva,
   validarRespostaProfessor
 } from '@shared/respostas-ia'
+import { aulaSemGabarito } from '@shared/aula'
 import { acharClaude, rodarClaude, type ChamadaClaude, type Esforco, type RespostaClaude } from './claude'
 import {
   FORMATO_AULA,
@@ -473,17 +474,19 @@ export class Assistente {
       mkdirSync(pasta, { recursive: true })
       const marca = this.o.agora()
       const fotos = p.fotos.filter((f) => existsSync(f)).map((f, i) => this.copiar(f, pasta, `resposta-${marca}-${i + 1}`))
+      const escolhido = a.conteudo.exercicios.find((e) => e.numero === p.exercicio)
       const dados = await chamar(
         pasta,
         pedidoProfessor({
           materia,
           tema: a.tema,
-          aula: JSON.stringify(a.conteudo),
+          aula: JSON.stringify(aulaSemGabarito(a.conteudo)),
           materiais: this.materiaisDaAula(a),
           conversa: a.conversa.slice(-10).map((m) => `${m.de === 'aluno' ? 'Aluno' : 'Professor'}: ${curto(m.texto, 1500)}`),
           texto: p.texto,
           fotos,
-          exercicio: p.exercicio
+          exercicio: p.exercicio,
+          referencia: escolhido?.resposta || null
         }),
         FORMATO_PROFESSOR
       )

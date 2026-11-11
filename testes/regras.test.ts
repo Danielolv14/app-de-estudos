@@ -10,6 +10,7 @@ import {
   formatarDuracao,
   formatarRelogio,
   inicioDaSemana,
+  listasSoCrescem,
   metaDoDia,
   pausaMs,
   pausar,
@@ -17,6 +18,7 @@ import {
   proximasAvaliacoes,
   proximoDiaDaMateria,
   recuperar,
+  removidosDasListas,
   retomar
 } from '@shared/regras'
 import type { Evento, Lembrete, Sessao, SessaoAtiva, Tarefa } from '@shared/tipos'
@@ -106,6 +108,11 @@ describe('meta do dia e trava', () => {
     expect(frase).toBe('Vou parar 48 min antes da meta de hoje, mesmo faltando 16 dias para a Atividade avaliativa 2 de Cálculo.')
     expect(fraseConfere('vou parar 48 min antes da meta de hoje mesmo faltando 16 dias para a atividade avaliativa 2 de calculo', frase)).toBe(true)
     expect(fraseConfere('vou parar', frase)).toBe(false)
+    // Com a matéria: põe o nome quando falta e não repete quando o título já tem.
+    expect(fraseTrava('2026-11-10', 48, proxima, 'Cálculo')).toBe(frase)
+    expect(fraseTrava('2026-11-10', 48, { ...proxima, titulo: 'Prova 2' }, 'Arquitetura')).toBe(
+      'Vou parar 48 min antes da meta de hoje, mesmo faltando 16 dias para a Prova 2 de Arquitetura.'
+    )
   })
 })
 
@@ -158,5 +165,23 @@ describe('datas e formatação', () => {
     expect(formatarDuracao(120 * MIN)).toBe('2h')
     expect(formatarDuracao(45 * MIN)).toBe('45 min')
     expect(formatarRelogio(3_725_000)).toBe('01:02:05')
+  })
+})
+
+describe('listas do bloqueio durante a sessão', () => {
+  const antes = { dominios: ['instagram.com', 'web.whatsapp.com'], processos: ['steam'], pastasBloqueadas: [] }
+
+  it('acrescentar pode; tirar não (o que já estava fica)', () => {
+    const depois = { dominios: ['INSTAGRAM.com', 'youtube.com'], processos: [], pastasBloqueadas: ['C:\Jogos'] }
+    expect(removidosDasListas(antes, depois)).toEqual(['web.whatsapp.com', 'steam'])
+    expect(listasSoCrescem(antes, depois)).toEqual({
+      dominios: ['instagram.com', 'web.whatsapp.com', 'youtube.com'],
+      processos: ['steam'],
+      pastasBloqueadas: ['C:\Jogos']
+    })
+  })
+
+  it('sem nada tirado, não reclama', () => {
+    expect(removidosDasListas(antes, { ...antes, dominios: [...antes.dominios, 'x.com'] })).toEqual([])
   })
 })

@@ -9,6 +9,7 @@ import { siglaDe } from '@shared/sigla'
 import { estiloMateria, Led, nomeDe } from '../componentes/Basicos'
 import { IconeDica, IconeEnviar, IconeFechar, IconeFoto, IconeMais, IconeSeta } from '../componentes/Icones'
 import { PdfsDoCanvas, type PdfEscolhido } from '../componentes/Canvas'
+import { TextoLinha, TextoRico } from '../componentes/TextoRico'
 import { useAgora } from '../usarEstado'
 
 /** Pedido vindo do Foco: abrir a aula da tarefa (ou preparar uma). `vez` muda a cada clique. */
@@ -323,7 +324,7 @@ function NovaAula({
         </label>
         <p className="form__dica">
           A IA explica o tema na ordem de estudo, com as fórmulas para decorar, exemplos resolvidos e as armadilhas de prova, e passa de 5 a 10
-          exercícios (primeiro os dos slides do professor). A dica e o gabarito ficam escondidos até você pedir.
+          exercícios (primeiro os dos slides do professor). A dica fica escondida até você pedir, e o gabarito abre depois que você tenta.
         </p>
         {erro && <p className="erro-ia">{erro}</p>}
         <div className="form__botoes">
@@ -506,13 +507,19 @@ function AulaAberta({ estado, id, voltar }: { estado: Estado; id: number; voltar
       </div>
 
       <div className="painel aula-intro">
-        {c.objetivo && <p className="aula-intro__objetivo">{c.objetivo}</p>}
+        {c.objetivo && (
+          <p className="aula-intro__objetivo">
+            <TextoLinha texto={c.objetivo} />
+          </p>
+        )}
         {c.roteiro.length > 0 && (
           <>
             <strong className="aula-rotulo">Ordem de estudo</strong>
             <ol className="roteiro">
               {c.roteiro.map((r, i) => (
-                <li key={i}>{r}</li>
+                <li key={i}>
+                  <TextoLinha texto={r} />
+                </li>
               ))}
             </ol>
           </>
@@ -537,7 +544,9 @@ function AulaAberta({ estado, id, voltar }: { estado: Estado; id: number; voltar
             <div className="formulas">
               <strong className="aula-rotulo">Para decorar</strong>
               {s.formulas.map((f, j) => (
-                <code key={j}>{f}</code>
+                <code key={j}>
+                  <TextoLinha texto={f} />
+                </code>
               ))}
             </div>
           )}
@@ -550,7 +559,9 @@ function AulaAberta({ estado, id, voltar }: { estado: Estado; id: number; voltar
           <h2>Armadilhas de prova</h2>
           <ul className="armadilhas">
             {c.armadilhas.map((a, i) => (
-              <li key={i}>{a}</li>
+              <li key={i}>
+                <TextoLinha texto={a} />
+              </li>
             ))}
           </ul>
         </div>
@@ -598,13 +609,7 @@ function AulaAberta({ estado, id, voltar }: { estado: Estado; id: number; voltar
 
 /** Texto da IA: parágrafos separados por linha em branco, e as quebras simples mantidas. */
 function Texto({ texto }: { texto: string }) {
-  return (
-    <div className="aula-texto">
-      {texto.split(/\n{2,}/).map((p, i) => (
-        <p key={i}>{p}</p>
-      ))}
-    </div>
-  )
+  return <TextoRico texto={texto} className="aula-texto" />
 }
 
 function Exemplo({ enunciado, resolucao }: { enunciado: string; resolucao: string }) {
@@ -612,11 +617,13 @@ function Exemplo({ enunciado, resolucao }: { enunciado: string; resolucao: strin
   return (
     <div className="exemplo">
       <strong className="aula-rotulo">Exemplo</strong>
-      <p className="exemplo__enunciado">{enunciado}</p>
+      <p className="exemplo__enunciado">
+        <TextoLinha texto={enunciado} />
+      </p>
       {resolucao &&
         (ver ? (
           <div className="questao__resolucao">
-            <p>{resolucao}</p>
+            <TextoRico texto={resolucao} />
           </div>
         ) : (
           <button className="botao-texto" onClick={() => setVer(true)}>
@@ -630,6 +637,16 @@ function Exemplo({ enunciado, resolucao }: { enunciado: string; resolucao: strin
 function Exercicio({ aulaId, e, situacao, responder }: { aulaId: number; e: ExercicioAula; situacao: SituacaoExercicio | null; responder: () => void }) {
   const [verDica, setVerDica] = useState(false)
   const [verResolucao, setVerResolucao] = useState(false)
+  // O gabarito abre direto depois de uma tentativa (o professor corrigiu ou ele marcou como foi).
+  // Antes disso, o primeiro clique só pergunta: ver a conta pronta tira a chance de descobrir sozinho.
+  const [confirmar, setConfirmar] = useState(false)
+  function gabarito() {
+    if (verResolucao) setVerResolucao(false)
+    else if (situacao || confirmar) {
+      setVerResolucao(true)
+      setConfirmar(false)
+    } else setConfirmar(true)
+  }
   return (
     <li className={`questao exercicio ${situacao ? `questao--${CLASSE_SITUACAO[situacao]}` : ''}`}>
       <div className="questao__topo">
@@ -637,20 +654,29 @@ function Exercicio({ aulaId, e, situacao, responder }: { aulaId: number; e: Exer
         <span className="mudo">{e.origem}</span>
         <span className={`nivel nivel--${e.nivel}`}>{NOME_NIVEL[e.nivel]}</span>
       </div>
-      <p className="questao__enunciado">{e.enunciado}</p>
+      <p className="questao__enunciado">
+        <TextoLinha texto={e.enunciado} />
+      </p>
       {verDica && e.dica && (
         <div className="exercicio__dica">
           <IconeDica />
-          <p>{e.dica}</p>
+          <p>
+            <TextoLinha texto={e.dica} />
+          </p>
         </div>
+      )}
+      {confirmar && (
+        <p className="exercicio__aviso">
+          Tente no papel antes. Se mandar a resposta (ou marcar como foi), o gabarito abre direto. Travou? Peça a dica.
+        </p>
       )}
       {verResolucao && (
         <div className="questao__resolucao">
           <strong>Resolução</strong>
-          <p>{e.resolucao}</p>
+          <TextoRico texto={e.resolucao} />
           {e.resposta && (
-            <p>
-              <strong>Resposta:</strong> {e.resposta}
+            <p className="questao__resposta">
+              <strong>Resposta:</strong> <TextoLinha texto={e.resposta} />
             </p>
           )}
         </div>
@@ -661,8 +687,12 @@ function Exercicio({ aulaId, e, situacao, responder }: { aulaId: number; e: Exer
             {verDica ? 'Esconder a dica' : 'Dica'}
           </button>
         )}
-        <button className="botao-texto" onClick={() => setVerResolucao(!verResolucao)}>
-          {verResolucao ? 'Esconder o gabarito' : 'Gabarito'}
+        <button
+          className={`botao-texto ${confirmar ? 'exercicio__confirmar' : ''}`}
+          onClick={gabarito}
+          title={situacao ? undefined : 'Mande a resposta ou marque como foi, e o gabarito abre direto'}
+        >
+          {verResolucao ? 'Esconder o gabarito' : confirmar ? 'Já tentei no papel, mostrar' : 'Gabarito'}
         </button>
         <div className="segmentado" role="group" aria-label={`Como foi o exercício ${e.numero}`}>
           {(['acertei', 'parcial', 'errei'] as const).map((s) => (
@@ -695,26 +725,56 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
   const [erro, setErro] = useState('')
   const [arrastando, setArrastando] = useState(false)
   const painel = useRef<HTMLDivElement>(null)
+  const compositor = useRef<HTMLFormElement>(null)
   const campo = useRef<HTMLTextAreaElement>(null)
-  const fim = useRef<HTMLLIElement>(null)
   const trabalho = estado.ia.trabalho
   const respondendo = trabalho?.tipo === 'professor' && trabalho.aulaId === aula.id
+
+  // O campo de escrever está na tela? Se não estiver, aparece o atalho no canto.
+  const [aVista, setAVista] = useState(true)
+  const aVistaRef = useRef(true)
+  useEffect(() => {
+    const el = compositor.current
+    if (!el) return
+    const obs = new IntersectionObserver(([e]) => {
+      aVistaRef.current = e.isIntersecting
+      setAVista(e.isIntersecting)
+    })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+  // Resposta que chegou enquanto ele estava lendo a aula lá em cima.
+  const [lidas, setLidas] = useState(aula.conversa.length)
+  useEffect(() => {
+    if (aVista) setLidas(aula.conversa.length)
+  }, [aVista, aula.conversa.length])
+  const novidade = aula.conversa.length > lidas
+
+  const ultimaMensagem = () => painel.current?.querySelector('.conversa > li:last-child')
+  function irParaEscrever() {
+    compositor.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setTimeout(() => campo.current?.focus({ preventScroll: true }), 400)
+  }
+  function irAoProfessor() {
+    if (novidade) ultimaMensagem()?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    else irParaEscrever()
+  }
 
   // "Mandar a resposta" num exercício: desce até aqui, já com o exercício escolhido.
   useEffect(() => {
     if (!responder) return
     setExercicio(responder.numero)
-    painel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    setTimeout(() => campo.current?.focus(), 350)
+    irParaEscrever()
   }, [responder?.vez])
 
-  // Mensagem nova (não ao abrir a aula): mostra o fim da conversa.
+  // Mensagem nova (não ao abrir a aula): mostra o começo dela, mas só se ele estiver aqui embaixo.
+  // Lendo a aula lá em cima, ele não é puxado: o atalho do canto avisa que chegou resposta.
   const tamanhoAntes = useRef({ conversa: aula.conversa.length, respondendo })
   useEffect(() => {
     const antes = tamanhoAntes.current
     tamanhoAntes.current = { conversa: aula.conversa.length, respondendo }
-    if (aula.conversa.length > antes.conversa || (respondendo && !antes.respondendo))
-      fim.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    if (aVistaRef.current && (aula.conversa.length > antes.conversa || (respondendo && !antes.respondendo)))
+      ultimaMensagem()?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [aula.conversa.length, respondendo])
 
   async function mandar(e?: FormEvent) {
@@ -758,17 +818,34 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
           ))}
           {enviando && <Mensagem aulaId={aula.id} m={{ de: 'aluno', texto: enviando.texto, quando: 0, fotos: [], exercicio: enviando.exercicio }} fotosLocais={enviando.fotos.length} />}
           {respondendo && (
-            <li className="msg msg--professor msg--pensando" ref={fim}>
+            <li className="msg msg--professor msg--pensando">
               <span className="msg__quem">Professor</span>
               <p>
                 <Led aceso cor="ambar" /> Lendo e corrigindo... {Math.floor(segundos / 60)}:{String(segundos % 60).padStart(2, '0')}
               </p>
             </li>
           )}
-          {!respondendo && <li ref={fim} className="conversa__fim" aria-hidden />}
         </ul>
       )}
+      {!aVista && (
+        <button className={`ir-professor ${novidade ? 'ir-professor--novo' : ''}`} onClick={irAoProfessor}>
+          {respondendo ? (
+            <>
+              <Led aceso cor="ambar" /> O professor está respondendo
+            </>
+          ) : novidade ? (
+            <>
+              <IconeSeta tamanho={15} /> Resposta nova do professor
+            </>
+          ) : (
+            <>
+              <IconeEnviar tamanho={15} /> Perguntar ao professor
+            </>
+          )}
+        </button>
+      )}
       <form
+        ref={compositor}
         className={`compositor ${arrastando ? 'compositor--arrastando' : ''}`}
         onSubmit={(e) => void mandar(e)}
         onDragOver={(e) => {
@@ -850,9 +927,9 @@ function Mensagem({ aulaId, m, fotosLocais = 0 }: { aulaId: number; m: MensagemA
     <li className={`msg msg--${m.de}`}>
       <span className="msg__quem">
         {m.de === 'aluno' ? 'Você' : 'Professor'}
-        {m.exercicio !== null ? `, exercício ${m.exercicio}` : ''}
+        {m.exercicio !== null ? ` · exercício ${m.exercicio}` : ''}
       </span>
-      {m.texto && <p>{m.texto}</p>}
+      {m.texto && <TextoRico texto={m.texto} className="msg__texto" />}
       {m.fotos.length > 0 && (
         <div className="msg__fotos">
           {m.fotos.map((f) => (

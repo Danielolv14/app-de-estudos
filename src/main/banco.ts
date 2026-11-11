@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS eventos (
   pontos REAL,
   meta REAL,
   nota REAL,
-  conteudo TEXT NOT NULL DEFAULT ''
+  conteudo TEXT NOT NULL DEFAULT '',
+  entregue INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS sessoes (
   id INTEGER PRIMARY KEY,
@@ -126,7 +127,8 @@ export class Banco {
 
   /**
    * Bancos de versões anteriores: a data do evento passa a poder ficar vazia (v1.1), as sessões ganham o check-in (v1.1),
-   * os eventos ganham o conteúdo e as matérias, o semestre e a bibliografia (v1.2), e a sigla (v1.5).
+   * os eventos ganham o conteúdo e as matérias, o semestre e a bibliografia (v1.2), a sigla (v1.5) e a marca de
+   * entregue no Canvas (v1.5.1).
    */
   private atualizarEsquema(): boolean {
     let mudou = false
@@ -157,7 +159,8 @@ export class Banco {
       ['materias', 'arquivada', 'INTEGER NOT NULL DEFAULT 0'],
       ['materias', 'semestre', "TEXT NOT NULL DEFAULT ''"],
       ['materias', 'bibliografia', "TEXT NOT NULL DEFAULT ''"],
-      ['materias', 'sigla', "TEXT NOT NULL DEFAULT ''"]
+      ['materias', 'sigla', "TEXT NOT NULL DEFAULT ''"],
+      ['eventos', 'entregue', 'INTEGER NOT NULL DEFAULT 0']
     ]
     for (const [tabela, coluna, tipo] of novas) {
       if (!this.colunas(tabela).some((c) => c.nome === coluna)) {

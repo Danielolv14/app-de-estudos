@@ -1130,6 +1130,17 @@ h2 {
   background: var(--borda-forte);
 }
 
+/* Já entregue no Canvas: fica no histórico, mas apagada e riscada. */
+.celula__evento--entregue {
+  color: var(--texto-3);
+  text-decoration: line-through;
+  background: transparent;
+}
+
+.selo--entregue {
+  opacity: 0.6;
+}
+
 .celula__plano {
   margin-top: auto;
   font-size: 11px;
@@ -3356,16 +3367,113 @@ code {
   white-space: nowrap;
 }
 
-.aula-texto p {
-  margin: 0 0 12px;
+.aula-texto {
   max-width: 74ch;
   font-size: 15px;
   line-height: 1.7;
-  white-space: pre-wrap;
 }
 
-.aula-texto p:last-child {
-  margin-bottom: 0;
+/* Texto da IA arrumado (componentes/TextoRico): parágrafos, passos numerados, listas, negrito e expoente. */
+.texto-rico > * {
+  margin: 0;
+}
+
+.texto-rico > * + * {
+  margin-top: 12px;
+}
+
+.texto-rico strong {
+  font-weight: 600;
+  color: var(--texto);
+}
+
+.texto-rico__titulo {
+  font-weight: 600;
+  color: var(--texto);
+}
+
+.texto-rico > * + .texto-rico__titulo {
+  margin-top: 18px;
+}
+
+.texto-rico__passos,
+.texto-rico__lista {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.texto-rico__passos li {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.texto-rico__numero {
+  justify-self: end;
+  font-family: var(--fonte-mono);
+  font-size: 12px;
+  color: var(--texto-3);
+}
+
+.texto-rico__lista li {
+  position: relative;
+  padding-left: 18px;
+}
+
+.texto-rico__lista li::before {
+  content: '';
+  position: absolute;
+  top: 0.72em;
+  left: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--texto-3);
+}
+
+.texto-rico code,
+.questao__enunciado code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--superficie-3);
+  font-family: var(--fonte-mono);
+  font-size: 0.9em;
+}
+
+/* Expoente e índice sem empurrar a linha de cima ou de baixo. */
+sup,
+sub {
+  font-size: 0.72em;
+  line-height: 0;
+}
+
+sup {
+  vertical-align: 0.6em;
+}
+
+sub {
+  vertical-align: -0.25em;
+}
+
+.questao__resolucao .texto-rico {
+  margin-top: 8px;
+}
+
+.questao__resolucao .texto-rico p {
+  margin: 0;
+}
+
+.questao__resolucao .texto-rico > * + * {
+  margin-top: 10px;
+}
+
+.questao__resposta {
+  margin-top: 12px !important;
+  padding-top: 10px;
+  border-top: 1px solid var(--borda);
 }
 
 /* Fórmulas: em fonte mono, uma por linha, com um traço na cor da matéria. */
@@ -3475,6 +3583,17 @@ code {
   white-space: pre-wrap;
 }
 
+/* Gabarito antes de tentar: o primeiro clique só pergunta. */
+.exercicio__aviso {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--texto-2);
+}
+
+.botao-texto.exercicio__confirmar {
+  color: var(--destaque);
+}
+
 .exercicio__acoes {
   display: flex;
   flex-wrap: wrap;
@@ -3557,11 +3676,9 @@ code {
 .conversa {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-height: 560px;
-  margin: 0 0 14px;
-  padding: 0 4px 0 0;
-  overflow-y: auto;
+  gap: 14px;
+  margin: 0 0 16px;
+  padding: 0;
   list-style: none;
 }
 
@@ -3570,6 +3687,82 @@ code {
   padding: 10px 14px;
   border: 1px solid var(--borda);
   border-radius: var(--raio-g);
+  scroll-margin: 16px;
+}
+
+/* A resposta do professor é um texto para ler, não um balão de chat: largura toda e o traço da matéria. */
+.msg.msg--professor {
+  align-self: stretch;
+  max-width: none;
+  padding: 16px 20px 18px;
+  border-left: 2px solid var(--cor-materia, var(--borda-forte));
+  border-radius: 0 var(--raio-g) var(--raio-g) 0;
+}
+
+.msg--professor .msg__quem {
+  margin-bottom: 10px;
+  font-family: var(--fonte-mono);
+  letter-spacing: 0.02em;
+}
+
+.msg--professor .msg__texto {
+  max-width: 76ch;
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+
+.msg .texto-rico > * + * {
+  margin-top: 10px;
+}
+
+.msg--aluno .msg__texto {
+  font-size: 13.5px;
+}
+
+/* Atalho no canto: leva até o professor quando o campo de escrever está fora da tela. */
+.ir-professor {
+  position: fixed;
+  right: 28px;
+  bottom: 24px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--borda-forte);
+  border-radius: 999px;
+  background: var(--superficie-2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  color: var(--texto);
+  font: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+  animation: aparecer 0.18s ease-out;
+}
+
+.ir-professor:hover {
+  background: var(--superficie-3);
+}
+
+.ir-professor:focus-visible {
+  outline: 2px solid var(--destaque);
+  outline-offset: 2px;
+}
+
+.ir-professor--novo {
+  border-color: var(--destaque);
+  color: var(--destaque);
+}
+
+.ir-professor svg {
+  flex: none;
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
 .msg p {

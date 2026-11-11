@@ -25,6 +25,9 @@ export type Ganchos = {
   mudou: () => void
 }
 
+/** O batimento roda a cada 30 s: um intervalo maior que este quer dizer que o PC dormiu (ou o app ficou congelado). */
+export const PARADA_MAXIMA_MS = 2 * 60_000
+
 export type SituacaoTrava = {
   livre: boolean
   metaMin: number
@@ -34,6 +37,9 @@ export type SituacaoTrava = {
 }
 
 export class GerenciadorSessao {
+  /** Momento em que o PC foi dormir (entre o aviso de suspensão e o de volta). */
+  private dormiuEm: number | null = null
+
   constructor(
     private readonly repo: Repositorio,
     private readonly g: Ganchos
@@ -105,11 +111,47 @@ export class GerenciadorSessao {
     this.g.mudou()
   }
 
-  /** Salva o sinal de vida (a cada 30 s): se o PC desligar, a sessão é recuperada até aqui. */
-  batimento(): void {
+  /**
+   * Salva o sinal de vida (a cada 30 s): se o PC desligar, a sessão é recuperada até aqui.
+   * Se o último sinal ficou velho demais, o PC dormiu sem avisar: o tempo parado não conta e a sessão
+   * fica pausada. Devolve quanto tempo ficou parado nesse caso (ou null).
+   */
+  batimento(): number | null {
+    const a = this.ativa()
+    if (!a || this.dormiuEm !== null) return null
+    const agora = this.g.agora()
+    const parado = agora - Math.max(a.batimento, a.marco)
+    if (parado > PARADA_MAXIMA_MS) {
+      this.repo.salvarSessaoAtiva(recuperar(a, agora))
+      this.repo.banco.salvarAgora()
+      this.g.mudou()
+      return parado
+    }
+    this.repo.salvarSessaoAtiva({ ...a, batimento: agora })
+    return null
+  }
+
+  /** O PC vai dormir: guarda o momento. Enquanto ele dorme, o batimento não anda. */
+  suspender(): void {
     const a = this.ativa()
     if (!a) return
-    this.repo.salvarSessaoAtiva({ ...a, batimento: this.g.agora() })
+    const agora = this.g.agora()
+    this.dormiuEm = agora
+    this.repo.salvarSessaoAtiva({ ...a, batimento: agora })
+    this.repo.banco.salvarAgora()
+  }
+
+  /** O PC acordou: o tempo dormindo não vira estudo nem pausa, e a sessão volta pausada. Devolve quanto tempo ele dormiu. */
+  acordar(): number | null {
+    const desde = this.dormiuEm
+    this.dormiuEm = null
+    const a = this.ativa()
+    if (!a || desde === null) return null
+    const agora = this.g.agora()
+    this.repo.salvarSessaoAtiva(recuperar({ ...a, batimento: desde }, agora))
+    this.repo.banco.salvarAgora()
+    this.g.mudou()
+    return Math.max(0, agora - desde)
   }
 
   situacaoTrava(): SituacaoTrava {
@@ -119,13 +161,17 @@ export class GerenciadorSessao {
     const metaMin = metaDoDia(dia, this.repo.tarefas(), this.repo.metasDia())
     const estudado = estudadoNoDia(dia, this.repo.sessoes(), a, agora)
     const faltamMin = Math.max(0, Math.ceil(metaMin - estudado / 60_000))
-    const proxima = proximasAvaliacoes(this.repo.eventos(), dataLocal(agora))[0] ?? null
+    // A avaliação da matéria da sessão (a de outra matéria não diz nada sobre parar agora).
+    // Sessão sem matéria usa a próxima de qualquer uma; matéria sem avaliação marcada fica sem.
+    const avaliacoes = proximasAvaliacoes(this.repo.eventos(), dataLocal(agora))
+    const proxima = (a?.materiaId != null ? avaliacoes.find((e) => e.materiaId === a.materiaId) : avaliacoes[0]) ?? null
+    const materia = proxima ? this.repo.materias().find((m) => m.id === proxima.materiaId) : undefined
     return {
       livre: podeEncerrarLivre(metaMin, estudado),
       metaMin,
       estudadoMs: estudado,
       faltamMin,
-      frase: fraseTrava(dataLocal(agora), faltamMin, proxima)
+      frase: fraseTrava(dataLocal(agora), faltamMin, proxima, materia?.nome ?? null)
     }
   }
 

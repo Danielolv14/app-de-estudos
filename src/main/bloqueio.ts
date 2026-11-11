@@ -15,7 +15,7 @@ const PEDIDO = join(PASTA_DADOS, 'pedido.json')
 const STATUS = join(PASTA_DADOS, 'status.json')
 
 /** Versão do `servico-bloqueio.ps1` que este app espera (a variável `$VersaoServico` do script). */
-export const VERSAO_SERVICO = 2
+export const VERSAO_SERVICO = 3
 
 type StatusServico = { versao: number | null; bloqueado: boolean; vivoEm: number; erro: string | null; servico?: number }
 
@@ -43,16 +43,31 @@ export function statusBloqueio(): StatusBloqueio {
   }
 }
 
-/** Escreve o pedido e espera o serviço confirmar (até 6 s). */
-async function pedir(bloquear: boolean, dominios: string[]): Promise<boolean> {
-  if (!existsSync(PASTA_DADOS)) return false
+/** `sem-servico`: o bloqueio não foi instalado. `sem-resposta`: está instalado, mas não confirmou o pedido a tempo. */
+export type RespostaServico = 'ok' | 'sem-servico' | 'sem-resposta'
+
+/**
+ * Escreve o pedido e espera o serviço confirmar (até 6 s). Mesmo sem resposta, o pedido fica salvo: o serviço
+ * cumpre quando voltar. O arquivo pode estar aberto pelo serviço no instante da escrita, então tenta de novo.
+ */
+async function pedir(bloquear: boolean, dominios: string[]): Promise<RespostaServico> {
+  if (!existsSync(PASTA_DADOS)) return 'sem-servico'
   const versao = Date.now()
-  writeFileSync(PEDIDO, JSON.stringify({ bloquear, dominios, versao }))
+  let escrito = false
+  for (let i = 0; i < 10 && !escrito; i++) {
+    try {
+      writeFileSync(PEDIDO, JSON.stringify({ bloquear, dominios, versao }))
+      escrito = true
+    } catch {
+      await esperar(100)
+    }
+  }
+  if (!escrito) return 'sem-resposta'
   for (let i = 0; i < 24; i++) {
     await esperar(250)
-    if (lerStatusServico()?.versao === versao) return true
+    if (lerStatusServico()?.versao === versao) return 'ok'
   }
-  return false
+  return 'sem-resposta'
 }
 
 // ---------- Navegadores ----------
@@ -168,18 +183,19 @@ export class ControleBloqueio {
    * Liga tudo. `reiniciar` = reiniciar os navegadores (só no começo da sessão, não ao recuperar depois de um boot).
    * O reinício vem depois de o serviço confirmar, para o navegador já abrir com o hosts e as políticas novas.
    */
-  async ligar(config: Config, reiniciar: boolean): Promise<{ sites: boolean; reiniciados: string[] }> {
+  async ligar(config: Config, reiniciar: boolean): Promise<{ sites: RespostaServico; reiniciados: string[] }> {
     this.ligado = true
     this.iniciarVigia(config)
     const sites = await pedir(true, config.dominios)
-    const reiniciados = sites && reiniciar && config.reiniciarNavegador ? await reiniciarNavegadores() : []
+    const reiniciados = sites === 'ok' && reiniciar && config.reiniciarNavegador ? await reiniciarNavegadores() : []
     return { sites, reiniciados }
   }
 
-  async desligar(): Promise<void> {
+  /** Devolve se o serviço confirmou a liberação, em vez de supor que deu certo. */
+  async desligar(): Promise<RespostaServico> {
     this.ligado = false
     this.pararVigia()
-    await pedir(false, [])
+    return pedir(false, [])
   }
 
   /** Ajustes mudaram no meio da sessão: atualiza a lista sem reiniciar o navegador. */

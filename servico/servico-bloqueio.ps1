@@ -15,6 +15,10 @@
 # nomes de dominio validos e sempre aponta para 0.0.0.0 e ::. Nunca grava um IP vindo do pedido.
 # As politicas sao fixas aqui no script; nada do pedido vai para o registro.
 #
+# Pedido ruim nunca libera: se o pedido.json sumir ou vier quebrado (JSON ilegivel, "bloquear" que
+# nao e true/false), o servico continua com o ultimo pedido bom. Sem nenhum pedido bom (o servico
+# acabou de subir), nao mexe em nada. So um pedido bem formado com "bloquear": false tira o bloco.
+#
 # Este arquivo e so ASCII de proposito: o Windows PowerShell 5.1 le .ps1 sem BOM como ANSI.
 
 param(
@@ -25,7 +29,7 @@ param(
 )
 
 # Sobe quando o script muda. O app compara e pede para reinstalar se o instalado for mais velho.
-$VersaoServico = 2
+$VersaoServico = 3
 
 $Regras = @(
   @{ Chave = 'BraveSoftware\Brave'; Nome = 'TorDisabled'; Valor = 1; Tipo = 'DWord' },
@@ -43,9 +47,12 @@ $PedidoPath = Join-Path $Pasta 'pedido.json'
 $StatusPath = Join-Path $Pasta 'status.json'
 $DominioValido = '^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$'
 
+# Devolve o pedido, ou $null se ele nao existe ou nao esta bem formado.
 function Ler-Pedido {
   if (-not (Test-Path -LiteralPath $PedidoPath)) { return $null }
-  try { return ([IO.File]::ReadAllText($PedidoPath) | ConvertFrom-Json) } catch { return $null }
+  try { $p = [IO.File]::ReadAllText($PedidoPath) | ConvertFrom-Json } catch { return $null }
+  if ($null -eq $p -or -not ($p.bloquear -is [bool])) { return $null }
+  return $p
 }
 
 function Dominios-Validos($lista) {
@@ -134,22 +141,40 @@ function Escrever-Status($obj) {
 New-Item -ItemType Directory -Force -Path $Pasta | Out-Null
 $ultimoStatus = 0
 $ultimaVersao = -1
+$valido = $null   # o ultimo pedido bem formado (so na memoria: depois de reiniciar, vale o hosts como esta)
 
 while ($true) {
   $erro = $null
   $mudou = $false
-  $pedido = Ler-Pedido
-  $bloquear = [bool]($pedido -and $pedido.bloquear)
-  if ($bloquear) { $dominios = @(Dominios-Validos $pedido.dominios) } else { $dominios = @() }
+  $lido = Ler-Pedido
+  if ($lido) {
+    $valido = $lido
+  } elseif (Test-Path -LiteralPath $PedidoPath) {
+    $erro = 'pedido.json ilegivel: o bloqueio ficou como estava'
+  } elseif ($valido) {
+    $erro = 'pedido.json sumiu: o bloqueio ficou como estava'
+  }
+  $pedido = $valido
+  $bloquear = $false
+  $dominios = @()
   $versao = $null
-  if ($pedido) { $versao = $pedido.versao }
+  if ($pedido) {
+    $bloquear = $pedido.bloquear
+    if ($bloquear) { $dominios = @(Dominios-Validos $pedido.dominios) }
+    $versao = $pedido.versao
+  }
 
+  $final = ''
   try {
     if (Test-Path -LiteralPath $Hosts) { $atual = [IO.File]::ReadAllText($Hosts, $Latin1) } else { $atual = '' }
-    $novo = Montar $atual $bloquear $dominios
-    if ($novo -ne $atual) {
-      Gravar-Hosts $novo
-      $mudou = $true
+    $final = $atual
+    if ($pedido) {
+      $novo = Montar $atual $bloquear $dominios
+      if ($novo -ne $atual) {
+        Gravar-Hosts $novo
+        $final = $novo
+        $mudou = $true
+      }
     }
   } catch {
     $erro = $_.Exception.Message
@@ -157,10 +182,12 @@ while ($true) {
 
   # Cuidado: PowerShell nao diferencia maiusculas, entao este nome nao pode ser "$politicas" (= $Politicas).
   $politicasOk = $true
-  try {
-    if (Ajustar-Politicas ($bloquear -and $dominios.Count -gt 0)) { $mudou = $true }
-  } catch {
-    $politicasOk = $false
+  if ($pedido) {
+    try {
+      if (Ajustar-Politicas ($bloquear -and $dominios.Count -gt 0)) { $mudou = $true }
+    } catch {
+      $politicasOk = $false
+    }
   }
 
   if ($mudou) {
@@ -172,7 +199,7 @@ while ($true) {
     try {
       Escrever-Status @{
         versao    = $versao
-        bloqueado = ($bloquear -and $dominios.Count -gt 0 -and -not $erro)
+        bloqueado = $final.Contains($Inicio)   # o que o hosts tem de verdade agora
         dominios  = $dominios
         vivoEm    = $agora
         erro      = $erro
