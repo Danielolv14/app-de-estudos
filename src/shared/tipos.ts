@@ -91,10 +91,31 @@ export type Lembrete = {
   hora: string
 }
 
+/** Horário do bloqueio agendado de um dia da semana. */
+export type HorarioBloqueio = {
+  ativo: boolean
+  /** Começo e fim no formato HH:MM, no mesmo dia (o fim depois do começo). */
+  inicio: string
+  fim: string
+}
+
+/** Como está o bloqueio agendado agora (calculado pelo horário de hoje, pela meta e pelo que já foi estudado). */
+export type SituacaoAgendada = {
+  /** Agora está dentro do horário marcado para hoje. */
+  noHorario: boolean
+  /** O bloqueio agendado vale agora: no horário, com meta no dia e ela ainda não batida. */
+  ligado: boolean
+  /** Horário de hoje (HH:MM), ou nulo quando hoje não tem bloqueio agendado. */
+  inicio: string | null
+  fim: string | null
+}
+
 export type Config = {
   dominios: string[]
   processos: string[]
   pastasBloqueadas: string[]
+  /** Bloqueio que liga sozinho, um horário por dia da semana, de domingo (0) a sábado (6). */
+  bloqueioAgendado: HorarioBloqueio[]
   /** Reiniciar o Brave e o Chrome (os que estiverem abertos) no começo da sessão. Antes da v1.2 se chamava `reiniciarChrome`. */
   reiniciarNavegador: boolean
   /** Um lembrete por dia da semana, de domingo (0) a sábado (6). */
@@ -153,6 +174,8 @@ export type Estado = {
   ativa: SessaoAtiva | null
   config: Config
   bloqueio: StatusBloqueio
+  /** Bloqueio agendado de hoje. */
+  agendado: SituacaoAgendada
   /** Lembrete aberto na tela (a hora de estudar chegou e o timer não começou). */
   lembreteAberto: boolean
   /** Mensagens curtas para mostrar na tela (ex.: "Fechei a Steam"). */

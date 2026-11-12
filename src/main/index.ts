@@ -12,6 +12,7 @@ import {
   safeStorage,
   screen,
   session,
+  shell,
   Tray
 } from 'electron'
 import { copyFileSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
@@ -29,7 +30,7 @@ import type {
   SituacaoExercicio,
   StatusBloqueio
 } from '@shared/tipos'
-import { dataLocal, estudoMs, formatarDuracao, listasSoCrescem } from '@shared/regras'
+import { configDuranteBloqueio, dataLocal, estudoMs, formatarDuracao } from '@shared/regras'
 import { gerarResumo } from '@shared/resumo'
 import { aulaEmMarkdown, nomeArquivoAula } from '@shared/aula'
 import { siglaDe } from '@shared/sigla'
@@ -41,11 +42,14 @@ import { prepararDados } from './seed'
 import { ARQUIVOS_FALSOS_CANVAS, dadosFalsosDeAula, dadosFalsosDeCanvas, dadosFalsosDeIa } from './captura'
 import { revisaoCanvas, SincroniaCanvas } from './sincronia-canvas'
 import { GerenciadorSessao } from './sessao'
+import { AgendaBloqueio } from './agenda'
 import { ControleBloqueio, desinstalarServico, instalarServico, nomeAmigavel, statusBloqueio } from './bloqueio'
 import { Lembretes } from './lembrete'
 import { agora, definirAgora } from './relogio'
 import { gravarDemo } from './video'
 import { ARQUIVOS_FICTICIOS_CANVAS, extrasFicticios, semearFicticio } from './demo-ficticia'
+import { salvarFotoDaCamera } from './camera'
+import { Ditado } from './ditado'
 
 // ---------- Opções de linha de comando (para testes) ----------
 const arg = (nome: string): string | undefined =>
@@ -59,6 +63,8 @@ const modoTeste = !!pastaCaptura || !!arquivoVideo || tem('sem-bloqueio')
 const ficticio = (!!arquivoVideo || tem('ficticio')) && !!arg('dados')
 // O vídeo sai em 1920x1080: janela de 1280x720 com escala 1,5.
 if (arquivoVideo) app.commandLine.appendSwitch('force-device-scale-factor', '1.5')
+// Nos prints, a câmera da Aula mostra a imagem de teste do Chromium no lugar da webcam.
+if (pastaCaptura) app.commandLine.appendSwitch('use-fake-device-for-media-stream')
 if (arg('dados')) app.setPath('userData', arg('dados')!)
 if (arg('agora')) definirAgora(arg('agora')!)
 
@@ -73,10 +79,12 @@ const pastaScripts = () => (app.isPackaged ? join(process.resourcesPath, 'servic
 
 let repo: Repositorio
 let sessao: GerenciadorSessao
+let agenda: AgendaBloqueio
 let lembretes: Lembretes
 let assistente: Assistente
 let canvas: SincroniaCanvas
 let bloqueio: ControleBloqueio
+const ditado = new Ditado()
 let principal: BrowserWindow | null = null
 let mini: BrowserWindow | null = null
 let bandeja: Tray | null = null
@@ -107,7 +115,8 @@ function estado(): Estado {
     metasDia: repo.metasDia(),
     ativa: repo.sessaoAtiva(),
     config: repo.config(),
-    bloqueio: modoTeste ? { ...STATUS_TESTE, bloqueado: !!repo.sessaoAtiva() } : statusBloqueio(),
+    bloqueio: modoTeste ? { ...STATUS_TESTE, bloqueado: !!repo.sessaoAtiva() || agenda.ligado } : statusBloqueio(),
+    agendado: agenda.situacao(),
     lembreteAberto: lembretes.aberto,
     avisos,
     simulados: repo.simulados(),
@@ -306,7 +315,9 @@ function atualizarBandeja(): void {
   const materia = repo.materias().find((m) => m.id === a?.materiaId)
   const resumo = a
     ? `${a.status === 'estudando' ? 'Estudando' : 'Pausado'}: ${formatarDuracao(estudoMs(a, agora()))}${materia ? ` de ${materia.nome}` : ''}`
-    : 'Nenhuma sessão agora'
+    : agenda.ligado
+      ? `Bloqueio agendado até ${agenda.situacao().fim ?? 'o fim do horário'}`
+      : 'Nenhuma sessão agora'
   bandeja.setToolTip(`App de Estudos\n${resumo}`)
   const config = repo.config()
   bandeja.setContextMenu(
@@ -340,8 +351,39 @@ function sair(): void {
     avisar('Encerre a sessão antes de sair do app.')
     return
   }
+  // Saindo, o vigia dos apps pararia (os sites continuariam bloqueados pelo serviço).
+  if (agenda.ligado) {
+    mostrarPrincipal()
+    avisar(`O bloqueio agendado vai até as ${agenda.situacao().fim}, ou até você bater a meta de hoje. Depois disso dá para sair.`)
+    return
+  }
   saindo = true
   app.quit()
+}
+
+// ---------- Bloqueio (da sessão e do agendado) ----------
+/** `reiniciar`: reiniciar os navegadores abertos (só quando o bloqueio começa, não ao recuperar depois de um boot). */
+function ligarBloqueio(reiniciar: boolean): void {
+  if (modoTeste) return
+  void bloqueio.ligar(repo.config(), reiniciar).then((r) => {
+    if (r.sites === 'sem-servico') avisar('O bloqueio de sites não está instalado: instale o serviço em Ajustes.')
+    else if (r.sites === 'sem-resposta')
+      avisar('O serviço de bloqueio não respondeu, então os sites ainda podem abrir. Ele bloqueia assim que voltar; confira em Ajustes.', true)
+    if (r.reiniciados.length > 0) avisar(`Reiniciei o ${r.reiniciados.join(' e o ')} para derrubar as abas que já estavam abertas.`)
+  })
+}
+
+function desligarBloqueio(): void {
+  if (modoTeste) return
+  void bloqueio.desligar().then((r) => {
+    // Não finge que liberou: o pedido fica salvo e o serviço libera quando voltar.
+    if (r !== 'sem-resposta' || bloqueando() || liberacaoPendente !== null) return
+    liberacaoPendente = avisar(
+      'O serviço de bloqueio não respondeu, então o Instagram e o WhatsApp Web podem continuar bloqueados. O pedido para liberar ficou salvo: eles voltam assim que o serviço responder. Para resolver agora, clique em Reinstalar em Ajustes (ou reinicie o PC).',
+      true,
+      true
+    )
+  })
 }
 
 // ---------- Configuração ----------
@@ -351,11 +393,17 @@ function aplicarInicioComWindows(c: Config): void {
   app.setLoginItemSettings({ openAtLogin: c.iniciarComWindows, args: ['--oculto'] })
 }
 
+/** Tem bloqueio valendo agora: sessão em andamento ou horário agendado. */
+const bloqueando = (): boolean => !!repo.sessaoAtiva() || agenda.ligado
+
 function salvarConfig(c: Config): void {
-  if (repo.sessaoAtiva()) c = { ...c, ...listasSoCrescem(repo.config(), c) }
+  const travado = bloqueando()
+  if (travado) c = configDuranteBloqueio(repo.config(), c)
   repo.salvarConfig(c)
   aplicarInicioComWindows(c)
-  if (repo.sessaoAtiva() && !modoTeste) void bloqueio.atualizar(c)
+  if (travado && !modoTeste) void bloqueio.atualizar(c)
+  // Um horário novo que já começou liga agora.
+  agenda.conferir()
   mudou()
 }
 
@@ -412,10 +460,13 @@ function registrarIpc(): void {
   h('bloqueio:instalar', async () => {
     const r = await instalarServico(pastaScripts())
     avisar(r.mensagem)
+    // Instalado no meio de um bloqueio: o pedido de antes não chegou a ninguém.
+    if (r.ok && bloqueando() && !modoTeste) void bloqueio.atualizar(repo.config())
     return r
   })
   h('bloqueio:desinstalar', async () => {
     if (repo.sessaoAtiva()) return { ok: false, mensagem: 'Encerre a sessão antes de remover o bloqueio.' }
+    if (agenda.ligado) return { ok: false, mensagem: 'Espere o bloqueio agendado acabar para remover.' }
     const r = await desinstalarServico(pastaScripts())
     avisar(r.mensagem)
     return r
@@ -544,6 +595,20 @@ function registrarIpc(): void {
   h('aula:remover', (id: number) => assistente.removerAula(id))
   h('aula:escolherMaterial', () => escolherArquivos('Material da aula (PDF ou foto)', MODELOS_ACEITOS, true).then((a) => a.slice(0, MAX_MATERIAIS_AULA)))
   h('aula:escolherFotos', () => escolherArquivos('Fotos da resolução', FOTOS_ACEITAS, true))
+  h('aula:limparConversa', (id: number) => assistente.limparConversa(id))
+  ipcMain.handle('aula:fotoCamera', (_e, imagem: string) => {
+    try {
+      return { ok: true, caminho: salvarFotoDaCamera(join(app.getPath('userData'), 'camera'), imagem, Date.now()) }
+    } catch (e) {
+      return { ok: false, mensagem: (e as Error).message }
+    }
+  })
+  ipcMain.handle('aula:prepararDitado', () => {
+    if (!modoTeste) ditado.preparar()
+  })
+  // Nos testes não aperta tecla nenhuma: devolve o caso deste PC (sem teclado em português), para o print do aviso.
+  ipcMain.handle('aula:ditar', () => (modoTeste ? 'sem-portugues' : principal ? ditado.abrir(principal.getNativeWindowHandle()) : 'erro'))
+  ipcMain.handle('aula:abrirIdiomas', () => shell.openExternal('ms-settings:regionlanguage'))
   ipcMain.handle('aula:miniatura', (_e, id: number, foto: string) => {
     const img = nativeImage.createFromPath(join(assistente.pastaAula(id), basename(foto)))
     return img.isEmpty() ? null : img.resize({ width: 320, quality: 'good' }).toDataURL()
@@ -616,11 +681,13 @@ function iniciarRotinas(): void {
       mudou()
     }
     // O serviço voltou e liberou os sites depois de uma sessão que terminou sem resposta dele.
-    if (liberacaoPendente !== null && (repo.sessaoAtiva() || (status.vivo && !status.bloqueado))) {
+    if (liberacaoPendente !== null && (bloqueando() || (status.vivo && !status.bloqueado))) {
       tirarAviso(liberacaoPendente)
       liberacaoPendente = null
-      if (!repo.sessaoAtiva()) avisar('O serviço de bloqueio respondeu e liberou os sites.', true)
+      if (!bloqueando()) avisar('O serviço de bloqueio respondeu e liberou os sites.', true)
     }
+    // Começou ou acabou o horário do bloqueio agendado, ou a meta foi batida.
+    agenda.conferir()
     // Virou o dia?
     const hoje = dataLocal(agora())
     if (hoje !== ultimoDia) {
@@ -737,6 +804,44 @@ async function capturar(pasta: string): Promise<void> {
       )
       await esperar(500)
       writeFileSync(join(pasta, 'aula-gabarito.png'), await foto(w.webContents))
+      // Mandar a resposta do exercício 3: o enunciado vai junto, em cima do campo de escrever.
+      await js("document.querySelector('#exercicio-3 .exercicio__acoes .tecla')?.click()")
+      await esperar(1000)
+      writeFileSync(join(pasta, 'aula-responder.png'), await foto(w.webContents))
+      // O "exercício 4" de uma mensagem abre o enunciado ali mesmo.
+      await js("(() => { const b = [...document.querySelectorAll('.msg__exercicio')].find((x) => x.textContent.includes('4')); b?.click(); b?.closest('.msg')?.scrollIntoView({ block: 'center' }) })()")
+      await esperar(500)
+      writeFileSync(join(pasta, 'aula-enunciado.png'), await foto(w.webContents))
+      // Ditado sem português no Windows (o caso deste PC) e a câmera com a imagem de teste do Chromium.
+      const botao = (texto: string) => `[...document.querySelectorAll('.compositor button, .camera button')].find((b) => b.textContent.trim() === '${texto}')?.click()`
+      await js(botao('Falar'))
+      await esperar(400)
+      await js("document.querySelector('.compositor').scrollIntoView({ block: 'center' })")
+      await esperar(300)
+      writeFileSync(join(pasta, 'aula-ditado.png'), await foto(w.webContents))
+      await js(botao('Câmera'))
+      await esperar(2000)
+      writeFileSync(join(pasta, 'aula-camera.png'), await foto(w.webContents))
+      await js(botao('Tirar foto'))
+      await esperar(400)
+      writeFileSync(join(pasta, 'aula-camera-conferir.png'), await foto(w.webContents))
+      await js(botao('Outra página'))
+      await esperar(400)
+      writeFileSync(join(pasta, 'aula-camera-paginas.png'), await foto(w.webContents))
+      // A segunda página vai junto para a mensagem: as duas fotos são gravadas e aparecem no campo.
+      await js(botao('Tirar foto'))
+      await esperar(300)
+      await js(botao('Juntar à mensagem'))
+      await esperar(1200)
+      writeFileSync(join(pasta, 'aula-camera-juntou.png'), await foto(w.webContents))
+      // Limpar a conversa (dois cliques).
+      await js("document.querySelector('.professor__topo .tecla')?.click()")
+      await esperar(200)
+      await js("document.querySelector('.professor__topo .tecla')?.click()")
+      await esperar(800)
+      await js("document.querySelector('.professor').scrollIntoView({ block: 'start' })")
+      await esperar(300)
+      writeFileSync(join(pasta, 'aula-limpa.png'), await foto(w.webContents))
       await js("document.querySelector('.voltar')?.click()")
       await esperar(400)
       await js("document.querySelector('.titulo-tela .tecla--ambar')?.click()")
@@ -747,6 +852,10 @@ async function capturar(pasta: string): Promise<void> {
       await js("document.querySelector('.conteudo').scrollTop = 0")
     }
   }
+  // O bloqueio agendado (travado quando o horário de agora vale).
+  await js("[...document.querySelectorAll('.secao h2')].find((h) => h.textContent === 'Bloqueio agendado')?.closest('.secao')?.scrollIntoView({ block: 'center' })")
+  await esperar(400)
+  writeFileSync(join(pasta, 'ajustes-agenda.png'), await foto(w.webContents))
   // Meio (IA e semana padrão) e parte de baixo dos Ajustes.
   await js("(() => { const c = document.querySelector('.conteudo'); c.scrollTop = (c.scrollHeight - c.clientHeight) * 0.5 })()")
   await esperar(400)
@@ -777,6 +886,7 @@ app.on('window-all-closed', () => {
 })
 app.on('before-quit', () => {
   saindo = true
+  ditado.fechar()
   repo?.banco.salvarAgora()
 })
 
@@ -794,31 +904,31 @@ app.whenReady().then(async () => {
     const nome = nomeAmigavel(processo)
     if (Date.now() - (ultimosFechados.get(nome) ?? 0) < 60_000) return
     ultimosFechados.set(nome, Date.now())
-    avisar(`Fechei ${nome}. Esses apps ficam fechados até a sessão terminar.`, true)
+    avisar(`Fechei ${nome}. Esses apps ficam fechados até ${repo.sessaoAtiva() ? 'a sessão terminar' : 'o bloqueio agendado acabar'}.`, true)
   })
   sessao = new GerenciadorSessao(repo, {
     agora,
-    ligarBloqueio: (reiniciar) => {
-      if (modoTeste) return
-      void bloqueio.ligar(repo.config(), reiniciar).then((r) => {
-        if (r.sites === 'sem-servico') avisar('O bloqueio de sites não está instalado: instale o serviço em Ajustes.')
-        else if (r.sites === 'sem-resposta')
-          avisar('O serviço de bloqueio não respondeu, então os sites ainda podem abrir. Ele bloqueia assim que voltar; confira em Ajustes.', true)
-        if (r.reiniciados.length > 0)
-          avisar(`Reiniciei o ${r.reiniciados.join(' e o ')} para derrubar as abas que já estavam abertas.`)
-      })
-    },
+    // Com o bloqueio agendado já valendo, o navegador já foi reiniciado quando ele ligou.
+    ligarBloqueio: (reiniciar) => ligarBloqueio(reiniciar && !agenda.ligado),
     desligarBloqueio: () => {
-      if (modoTeste) return
-      void bloqueio.desligar().then((r) => {
-        // Não finge que liberou: o pedido fica salvo e o serviço libera quando voltar.
-        if (r !== 'sem-resposta' || repo.sessaoAtiva() || liberacaoPendente !== null) return
-        liberacaoPendente = avisar(
-          'O serviço de bloqueio não respondeu, então o Instagram e o WhatsApp Web podem continuar bloqueados. O pedido para liberar ficou salvo: eles voltam assim que o serviço responder. Para resolver agora, clique em Reinstalar em Ajustes (ou reinicie o PC).',
-          true,
-          true
-        )
-      })
+      if (!agenda.seguraDepoisDaSessao()) return desligarBloqueio()
+      if (!modoTeste)
+        avisar(`A sessão terminou antes da meta, então o bloqueio agendado continua até as ${agenda.situacao().fim} (ou até você bater a meta).`, true)
+      mudou()
+    },
+    mudou
+  })
+  agenda = new AgendaBloqueio(repo, {
+    agora,
+    ligar: (s) => {
+      if (!modoTeste)
+        avisar(`Bloqueio agendado: Instagram, WhatsApp Web e jogos ficam bloqueados até as ${s.fim}, ou até você bater a meta de hoje.`, true)
+      ligarBloqueio(true)
+    },
+    desligar: (motivo) => {
+      if (motivo && !modoTeste)
+        avisar(motivo === 'meta' ? 'Meta de hoje batida: o bloqueio agendado acabou.' : 'Acabou o horário do bloqueio agendado.', true)
+      desligarBloqueio()
     },
     mudou
   })
@@ -860,7 +970,8 @@ app.whenReady().then(async () => {
   aplicarInicioComWindows(repo.config())
 
   if (sessao.recuperarAoAbrir()) avisar('A sessão anterior voltou pausada. O bloqueio continua ligado.', true)
-  else if (!modoTeste) void bloqueio.desligar() // garante que não ficou bloqueio sobrando de antes
+  // No horário agendado, liga; fora dele, tira o bloqueio que tiver sobrado de antes.
+  agenda.conferir(true)
 
   iniciarRotinas()
   escreverResumoDepois()

@@ -105,6 +105,16 @@ export type Api = {
   escolherMaterialAula(): Promise<string[]>
   escolherFotosAula(): Promise<string[]>
   miniaturaAula(aulaId: number, foto: string): Promise<string | null>
+  /** Apaga a conversa com o professor (e as fotos dela). As marcas dos exercícios ficam. */
+  limparConversaAula(aulaId: number): Promise<Resultado>
+  /** Grava a foto tirada pela câmera (imagem em base64) e devolve o caminho dela no PC. */
+  fotoDaCamera(imagem: string): Promise<{ ok: true; caminho: string } | { ok: false; mensagem: string }>
+  /** Abre o PowerShell do ditado em segundo plano, para o primeiro clique em Falar não esperar. */
+  prepararDitado(): Promise<void>
+  /** Passa a janela para o teclado em português e abre o ditado do Windows (Win+H) no campo com o foco. */
+  ditar(): Promise<'ok' | 'sem-portugues' | 'erro'>
+  /** Abre Configurações > Hora e idioma > Idioma e região. */
+  abrirIdiomasDoWindows(): Promise<void>
   /** Grava a aula em Markdown no vault. `mensagem` vazia: o Daniel cancelou a escolha do arquivo. */
   salvarAulaNoVault(id: number): Promise<Resultado>
 }

@@ -35,6 +35,8 @@ export const CONFIG_PADRAO: Config = {
   ],
   // Qualquer programa aberto de dentro destas pastas também é fechado (pega os jogos).
   pastasBloqueadas: ['\\steamapps\\common\\', '\\Epic Games\\', '\\Riot Games\\'],
+  // De segunda a sexta, 10 min antes do lembrete das 14h (pedido do Daniel em 2026-11-11).
+  bloqueioAgendado: [0, 1, 2, 3, 4, 5, 6].map((dia) => ({ ativo: dia >= 1 && dia <= 5, inicio: '13:50', fim: '18:00' })),
   reiniciarNavegador: true,
   lembretes: [
     { ativo: false, hora: '14:00' },

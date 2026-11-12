@@ -1,5 +1,5 @@
 // Regras puras do app (sem Electron nem banco), para poderem ser testadas sozinhas.
-import type { EstadoLembrete, Evento, Lembrete, Sessao, SessaoAtiva, Tarefa } from './tipos'
+import type { Config, EstadoLembrete, Evento, HorarioBloqueio, Lembrete, Sessao, SessaoAtiva, SituacaoAgendada, Tarefa } from './tipos'
 import { tituloSemMateria } from './sigla'
 
 const MINUTO = 60_000
@@ -128,6 +128,32 @@ export function listasSoCrescem(antes: ListasBloqueio, depois: ListasBloqueio): 
     processos: juntar(antes.processos, depois.processos),
     pastasBloqueadas: juntar(antes.pastasBloqueadas, depois.pastasBloqueadas)
   }
+}
+
+/**
+ * Com o bloqueio ligado (sessão ou agendado), as listas só crescem e a agenda do bloqueio não muda:
+ * desligar o horário de hoje no meio dele furaria o bloqueio.
+ */
+export function configDuranteBloqueio(antes: Config, depois: Config): Config {
+  return { ...depois, ...listasSoCrescem(antes, depois), bloqueioAgendado: antes.bloqueioAgendado }
+}
+
+// ---------- Bloqueio agendado ----------
+
+const HORA_VALIDA = /^([01]\d|2[0-3]):[0-5]\d$/
+
+/**
+ * Bloqueio que liga sozinho no horário do dia, mesmo sem o timer. Só acaba antes do fim quando a meta do dia
+ * é batida (a mesma regra da trava), e em dia sem meta não bloqueia. Horário que passa da meia-noite não vale.
+ */
+export function situacaoAgendada(p: { agora: number; horarios: HorarioBloqueio[]; metaMin: number; estudadoMs: number }): SituacaoAgendada {
+  const d = new Date(p.agora)
+  const h = p.horarios[d.getDay()]
+  if (!h?.ativo || !HORA_VALIDA.test(h.inicio) || !HORA_VALIDA.test(h.fim) || minutosDoDia(h.fim) <= minutosDoDia(h.inicio))
+    return { noHorario: false, ligado: false, inicio: null, fim: null }
+  const agoraMin = d.getHours() * 60 + d.getMinutes()
+  const noHorario = agoraMin >= minutosDoDia(h.inicio) && agoraMin < minutosDoDia(h.fim)
+  return { noHorario, ligado: noHorario && !podeEncerrarLivre(p.metaMin, p.estudadoMs), inicio: h.inicio, fim: h.fim }
 }
 
 // ---------- Tarefas atrasadas ----------

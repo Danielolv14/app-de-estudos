@@ -175,7 +175,9 @@ export function Foco({ estado, abrirTrava, abrirAula }: { estado: Estado; abrirT
           <p className="aparelho__info">
             {ativa
               ? `Começou às ${hora(ativa.inicio)}. Pausas: ${formatarDuracao(pausaMs(ativa, agora))}. Na pausa o bloqueio continua.`
-              : estado.bloqueio.vivo
+              : estado.agendado.ligado
+                ? `Bloqueio agendado até as ${estado.agendado.fim}. Ele só acaba antes se você bater a meta de hoje.`
+                : estado.bloqueio.vivo
                 ? estado.config.reiniciarNavegador
                   ? 'Ao começar, o Instagram e o WhatsApp Web são bloqueados e o Brave é reiniciado.'
                   : 'Ao começar, o Instagram e o WhatsApp Web são bloqueados.'

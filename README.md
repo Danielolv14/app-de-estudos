@@ -35,6 +35,8 @@ provas e o timer num lugar só, e durante a sessão os sites e jogos simplesment
 - **Trava:** antes de bater a meta, encerrar pede a frase digitada, com a avaliação da matéria da sessão.
 - **Bloqueio de sites e apps:** Instagram, WhatsApp Web e o que mais estiver na lista viram `0.0.0.0` no `hosts`.
   Um vigia fecha WhatsApp Desktop, Steam, Epic, Riot e qualquer jogo aberto das pastas deles.
+- **Bloqueio agendado:** de segunda a sexta, das 13:50 às 18:00 (editável em Ajustes), o bloqueio liga sozinho, mesmo
+  sem o timer. Só acaba antes do fim quando a meta do dia é batida, e em dia sem meta não liga.
 - **Mini-timer** sempre por cima das outras janelas, **lembrete** que insiste a cada 15 min e **check-in** no fim
   (o que fez e onde travou).
 
@@ -48,7 +50,8 @@ provas e o timer num lugar só, e durante a sessão os sites e jogos simplesment
 O app manda para a IA o tema da tarefa, a próxima avaliação, onde travei no último check-in e até 6 PDFs da matéria
 (sugeridos do Canvas pelo nome). Ela devolve a ordem de estudo, as partes com fórmula e exemplo resolvido, as
 armadilhas e de 5 a 10 exercícios com dica e gabarito escondidos. O gabarito só abre depois de uma tentativa. Embaixo
-fica a conversa com o professor: mando a resposta por texto ou foto, ele corrige e marca o exercício.
+fica a conversa com o professor: mando a resposta escrita, falada (ditado do Windows) ou em foto, tirada na hora pela
+câmera do PC ou do celular. O enunciado do exercício fica em cima do campo de escrever, ele corrige e marca o exercício.
 
 <p align="center">
   <img src=".github/prints/aula.png" width="49%" alt="Aula gerada pela IA">
@@ -104,8 +107,11 @@ flowchart LR
   bloqueio fica como estava. E se o serviço não responder ao encerrar, o app avisa em vez de fingir que liberou.
 - **Só domínios, sempre `0.0.0.0`:** o serviço valida cada nome antes de escrever, então o pedido não serve para
   redirecionar nada.
-- **Listas que só crescem:** durante a sessão, as listas de sites e apps só aceitam acréscimos (garantido no
-  processo principal, não só na tela).
+- **Listas que só crescem:** durante a sessão e o bloqueio agendado, as listas de sites e apps só aceitam acréscimos
+  e a agenda não muda (garantido no processo principal, não só na tela).
+- **Agenda e sessão juntas:** quem decide o horário é o app (`src/main/agenda.ts`), com o mesmo pedido ao serviço.
+  Se a sessão termina antes da meta dentro do horário, o bloqueio continua. Durante o horário, o app não sai pela
+  bandeja, para o vigia dos apps não parar.
 - **Abas já abertas:** o `hosts` não derruba conexões abertas, então o app reinicia o Brave (e o Chrome) restaurando
   as abas. Enquanto bloqueia, o serviço desliga a janela com Tor e o DNS seguro, que furariam o `hosts`.
 
@@ -169,6 +175,15 @@ O app lê o Canvas (`https://pucminas.instructure.com`, pela API REST v1) com um
   `%APPDATA%\App de Estudos\aulas\<id>` para o professor reler nas perguntas. "Mais exercícios" foca nos errados, e
   "Salvar no Obsidian" grava a aula em Markdown no vault. O texto da IA aparece com passos, listas, negrito, expoente e
   índice (`src/shared/texto.ts` e `componentes/TextoRico.tsx`).
+- **Na conversa com o professor:** o enunciado do exercício escolhido aparece em cima do campo (com setas para o
+  próximo e "Ver na aula"), e o "exercício N" de cada mensagem abre o enunciado ali mesmo. Só as 4 últimas mensagens
+  ficam abertas, e "Limpar conversa" apaga as mensagens e as fotos delas (as marcas dos exercícios ficam).
+- **Câmera:** `componentes/Camera.tsx` usa o `getUserMedia` com a webcam ou o celular (iVCam), deixa conferir e juntar
+  várias páginas, e o processo principal grava cada foto como arquivo (`src/main/camera.ts`) para seguir o caminho das
+  fotos do PC.
+- **Ditado:** o Electron não tem o reconhecimento de voz do Chrome, então o botão Falar usa o ditado do próprio Windows
+  (Win+H). Como ele dita no idioma do teclado ativo, um PowerShell em segundo plano troca a janela para um teclado em
+  português antes (`src/main/ditado.ts`). Sem português instalado no Windows, a tela explica como adicionar.
 - **Simulado:** a resolução de cada questão fica escondida até a prova acabar. As fotos entram arrastando para a tela
   (JPG, PNG ou WEBP). A nota e os pontos fracos vão para o check-in e para o resumo do vault.
 - **Login do Claude Code:** o Claude Code de linha de comando tem login próprio. Uma vez só, rode `claude auth login`
@@ -226,7 +241,7 @@ npm run build && npx electron . --dados=%TEMP%\estudos-teste --captura=%TEMP%\ca
 ```
 
 `--captura-ia` põe dados de mentira (simulado corrigido, aula de Cálculo, proposta de replanejamento, novidades do
-Canvas e três semanas de estudo).
+Canvas e três semanas de estudo). Na captura, a câmera da Aula mostra a imagem de teste do Chromium no lugar da webcam.
 
 ### Vídeo
 
@@ -271,6 +286,7 @@ Sai em `dist/App-de-Estudos-<versão>-instalador.exe`. Instalar por cima atualiz
 | 1.2 a 1.4 | 08 a 10/11/2026 | IA pelo Claude Code (simulado, plano de ensino, replanejamento), Constância e Canvas da PUC |
 | 1.5 | 10/11/2026 | Aula com a IA como professor, sigla da matéria e atalhos |
 | 1.5.1 | 11/11/2026 | PC dormindo não conta, bloqueio que falha fechado, atividades entregues fora dos avisos |
+| 1.6 | 11/11/2026 | Bloqueio agendado (seg a sex, 13:50 às 18:00); na Aula, enunciado junto do campo, limpar conversa, câmera ao vivo e ditado |
 
 ## Limites conhecidos
 

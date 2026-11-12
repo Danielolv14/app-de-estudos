@@ -509,6 +509,22 @@ export class Assistente {
     })
   }
 
+  /**
+   * Apaga a conversa com o professor e as fotos mandadas nela, para a conversa não crescer sem fim.
+   * As marcas dos exercícios (certo, em parte, errado) ficam.
+   */
+  limparConversa(aulaId: number): Resultado {
+    const a = this.repo.aula(aulaId)
+    if (!a) return { ok: false, mensagem: 'Aula não encontrada.' }
+    if (this.trabalho?.aulaId === aulaId) return { ok: false, mensagem: 'Espere o professor terminar de responder.' }
+    const pasta = this.pastaAula(aulaId)
+    // Só as fotos da conversa: o material da aula fica na mesma pasta.
+    for (const m of a.conversa)
+      for (const f of m.fotos) if (basename(f).startsWith('resposta-')) rmSync(join(pasta, basename(f)), { force: true })
+    this.repo.atualizarAula(aulaId, { conversa: [] }, this.o.agora())
+    return { ok: true, mensagem: 'Conversa com o professor limpa.' }
+  }
+
   /** Mais exercícios no fim da aula, focando nos que ele errou. */
   maisExercicios(aulaId: number, pedido: string): Promise<Resultado> {
     const a = this.repo.aula(aulaId)

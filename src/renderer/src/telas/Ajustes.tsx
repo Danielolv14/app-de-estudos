@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import type { BlocoSemana, Config, Estado, Materia } from '@shared/tipos'
+import type { BlocoSemana, Config, Estado, HorarioBloqueio, Materia } from '@shared/tipos'
 import { CORES_MATERIA } from '@shared/padroes'
 import { siglaAutomatica } from '@shared/sigla'
 import { formatarDuracao, removidosDasListas } from '@shared/regras'
@@ -17,7 +17,9 @@ const linhas = (texto: string) =>
     .filter(Boolean)
 
 export function Ajustes({ estado }: { estado: Estado }) {
-  const { config, bloqueio } = estado
+  const { config, bloqueio, agendado } = estado
+  // Sessão ou horário agendado: as listas só aceitam acréscimos e a agenda fica travada.
+  const travado = !!estado.ativa || agendado.ligado
   const materias = estado.materias.filter((m) => !m.arquivada)
   const arquivadas = estado.materias.filter((m) => m.arquivada)
   const salvar = (parcial: Partial<Config>) => void window.api.salvarConfig({ ...config, ...parcial })
@@ -30,8 +32,8 @@ export function Ajustes({ estado }: { estado: Estado }) {
   const listasMudaram =
     dominios !== config.dominios.join('\n') || processos !== config.processos.join('\n') || pastas !== config.pastasBloqueadas.join('\n')
   const novasListas = { dominios: linhas(dominios).map((d) => d.toLowerCase()), processos: linhas(processos), pastasBloqueadas: linhas(pastas) }
-  // Durante a sessão, as listas só aceitam acréscimos (o processo principal também garante isso).
-  const tirados = estado.ativa ? removidosDasListas(config, novasListas) : []
+  // Durante o bloqueio, as listas só aceitam acréscimos (o processo principal também garante isso).
+  const tirados = travado ? removidosDasListas(config, novasListas) : []
 
   async function instalar(remover = false) {
     setInstalando(true)
@@ -47,11 +49,13 @@ export function Ajustes({ estado }: { estado: Estado }) {
       ? { led: true, cor: 'ambar' as const, titulo: 'O serviço não está respondendo', texto: 'Reinicie o PC. Se continuar assim, instale de novo.' }
       : bloqueio.desatualizado
         ? { led: true, cor: 'ambar' as const, titulo: 'O serviço precisa ser atualizado', texto: 'A versão nova não libera os sites por engano se o pedido do app chegar quebrado. Clique em Reinstalar e confirme a janela de administrador.' }
-        : bloqueio.bloqueado && !estado.ativa
+        : bloqueio.bloqueado && !travado
           ? { led: true, cor: 'ambar' as const, titulo: 'Ainda bloqueando', texto: 'A sessão acabou, mas o serviço ainda não tirou o bloqueio. Se não sair em alguns segundos, clique em Reinstalar.' }
-          : bloqueio.bloqueado
+          : bloqueio.bloqueado && estado.ativa
             ? { led: true, cor: 'vermelho' as const, titulo: 'Bloqueando agora', texto: 'A sessão está em andamento. Os sites voltam quando ela terminar.' }
-            : { led: true, cor: 'verde' as const, titulo: 'Pronto para bloquear', texto: 'Os sites são bloqueados quando você começa a estudar.' }
+            : bloqueio.bloqueado
+              ? { led: true, cor: 'vermelho' as const, titulo: 'Bloqueando agora', texto: `Bloqueio agendado de hoje. Os sites voltam às ${agendado.fim}, ou antes se você bater a meta.` }
+              : { led: true, cor: 'verde' as const, titulo: 'Pronto para bloquear', texto: 'Os sites são bloqueados quando você começa a estudar e no horário agendado.' }
 
   return (
     <div className="ajustes">
@@ -82,7 +86,7 @@ export function Ajustes({ estado }: { estado: Estado }) {
               <button className="tecla tecla--pequena" disabled={instalando} onClick={() => void instalar()}>
                 Reinstalar
               </button>
-              <button className="tecla tecla--pequena" disabled={instalando || !!estado.ativa} onClick={() => void instalar(true)}>
+              <button className="tecla tecla--pequena" disabled={instalando || travado} onClick={() => void instalar(true)}>
                 Remover
               </button>
             </>
@@ -96,7 +100,7 @@ export function Ajustes({ estado }: { estado: Estado }) {
         </label>
         <p className="mudo" style={{ margin: '-8px 0 18px', maxWidth: '68ch' }}>
           Durante o bloqueio, o Brave fica sem a janela privada com Tor e sem o DNS seguro, porque os dois passariam por cima do
-          bloqueio. Por isso ele mostra &ldquo;gerenciado pela sua organização&rdquo; até a sessão terminar.
+          bloqueio. Por isso ele mostra &ldquo;gerenciado pela sua organização&rdquo; até o bloqueio acabar.
         </p>
 
         <div className="form">
@@ -106,7 +110,7 @@ export function Ajustes({ estado }: { estado: Estado }) {
               <textarea className="campo-area campo-area--codigo" rows={7} value={dominios} onChange={(e) => setDominios(e.target.value)} />
             </label>
             <label>
-              Apps fechados durante a sessão (nome do processo)
+              Apps fechados durante o bloqueio (nome do processo)
               <textarea className="campo-area campo-area--codigo" rows={7} value={processos} onChange={(e) => setProcessos(e.target.value)} />
             </label>
           </div>
@@ -115,11 +119,11 @@ export function Ajustes({ estado }: { estado: Estado }) {
             <textarea className="campo-area campo-area--codigo" rows={3} value={pastas} onChange={(e) => setPastas(e.target.value)} />
           </label>
           <div className="form__botoes">
-            {estado.ativa && (
+            {travado && (
               <p className={`esquerda ${tirados.length > 0 ? 'erro-ia' : 'mudo'}`} style={{ margin: '0 auto 0 0', alignSelf: 'center' }}>
                 {tirados.length > 0
-                  ? `Durante a sessão dá para acrescentar, mas não tirar. Volte com ${tirados.join(', ')}.`
-                  : 'Durante a sessão, as listas só aceitam acréscimos.'}
+                  ? `Durante o bloqueio dá para acrescentar, mas não tirar. Volte com ${tirados.join(', ')}.`
+                  : 'Durante o bloqueio, as listas só aceitam acréscimos.'}
               </p>
             )}
             <button className="tecla tecla--pequena tecla--ambar" disabled={!listasMudaram || tirados.length > 0} onClick={() => salvar(novasListas)}>
@@ -128,6 +132,8 @@ export function Ajustes({ estado }: { estado: Estado }) {
           </div>
         </div>
       </section>
+
+      <BloqueioAgendado estado={estado} travado={travado} salvar={salvar} />
 
       <SecaoIa estado={estado} salvar={salvar} />
 
@@ -269,6 +275,57 @@ function LinhaMateria({ materia }: { materia: Materia }) {
         Apagar
       </button>
     </div>
+  )
+}
+
+// ---------- Bloqueio agendado ----------
+
+function BloqueioAgendado({ estado, travado, salvar }: { estado: Estado; travado: boolean; salvar: (p: Partial<Config>) => void }) {
+  const { config, agendado } = estado
+  return (
+    <section className="secao">
+      <h2>Bloqueio agendado</h2>
+      <p>
+        Nos dias marcados, o bloqueio liga sozinho no horário, mesmo sem o timer, e reinicia o Brave como no começo da sessão. Ele só acaba antes do fim
+        quando você bate a meta do dia. Em dia sem meta (sem tarefa no plano), não bloqueia. Funciona com o app aberto, que já começa junto com o Windows.
+      </p>
+      {travado && (
+        <p className="mudo">
+          {agendado.ligado
+            ? `Travado até o bloqueio de hoje acabar: às ${agendado.fim}, ou antes se você bater a meta.`
+            : 'Travado até a sessão terminar.'}
+        </p>
+      )}
+      <div className="grade-lembretes">
+        {ORDEM_DIAS.map((i) => {
+          const h = config.bloqueioAgendado[i]
+          const mudar = (parcial: Partial<HorarioBloqueio>) =>
+            salvar({ bloqueioAgendado: config.bloqueioAgendado.map((x, j) => (j === i ? { ...x, ...parcial } : x)) })
+          return (
+            <div key={i} className={`lembrete-dia ${h.ativo ? '' : 'lembrete-dia--desligado'}`}>
+              <label>
+                <input type="checkbox" className="marcar" checked={h.ativo} disabled={travado} onChange={(e) => mudar({ ativo: e.target.checked })} />
+                {DIAS[i]}
+              </label>
+              {(['inicio', 'fim'] as const).map((campo) => (
+                <div key={campo} className="agenda-hora">
+                  {campo === 'fim' && <span className="agenda-hora__ate">até</span>}
+                  <input
+                    className="campo campo-hora"
+                    type="time"
+                    value={h[campo]}
+                    disabled={!h.ativo || travado}
+                    onChange={(e) => e.target.value && mudar({ [campo]: e.target.value })}
+                    aria-label={`${campo === 'inicio' ? 'Começo' : 'Fim'} do bloqueio de ${DIAS[i]}`}
+                  />
+                </div>
+              ))}
+              {h.ativo && h.fim <= h.inicio && <span className="erro-ia agenda-hora__erro">O fim precisa ser depois do começo.</span>}
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 

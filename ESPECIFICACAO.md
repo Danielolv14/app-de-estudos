@@ -30,10 +30,12 @@ Decidida no grill-me de 2026-11-08. App de desktop para o PC pessoal (Windows) q
 
 Ficaram de fora: caderno de erros e contador de tentativas.
 
-**Bloqueio agendado (pedido em 2026-11-08, ainda não feito):** o bloqueio de sites e apps liga sozinho em dias e horários configurados no app, mesmo sem o timer rodando.
-- Os dias e horários são editáveis em Ajustes.
+**Bloqueio agendado (pedido em 2026-11-08, feito em 2026-11-11):** o bloqueio de sites e apps liga sozinho em dias e horários configurados no app, mesmo sem o timer rodando.
+- Os dias e horários são editáveis em Ajustes. O padrão é de segunda a sexta, das 13:50 às 18:00 (10 min antes do lembrete das 14h).
 - Dentro do horário, só termina antes do fim se a meta do dia for batida, pela mesma regra da trava. Em dia sem meta, não bloqueia.
-- Junto com ele: enquanto houver bloqueio agendado, a agenda fica travada em Ajustes, como as listas já ficam na sessão (desde 2026-11-10, durante a sessão as listas de sites e apps só aceitam acréscimos).
+- Enquanto houver bloqueio (sessão ou agendado), a agenda fica travada em Ajustes e as listas de sites e apps só aceitam acréscimos.
+- Sessão encerrada antes da meta dentro do horário: o bloqueio continua até o fim do horário.
+- Quem liga é o app (que começa junto com o Windows), não o serviço. Durante o horário, "Sair" da bandeja e "Remover" o bloqueio ficam recusados.
 
 ## Entregas
 Em 2026-11-08 a ordem mudou para seguir o calendário das provas: o plano do semestre já estava importado, então ler o PDF do plano de ensino só ajuda no começo de 2027/1.

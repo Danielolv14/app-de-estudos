@@ -95,6 +95,11 @@ const api: Api = {
   escolherMaterialAula: chamar('aula:escolherMaterial') as Api['escolherMaterialAula'],
   escolherFotosAula: chamar('aula:escolherFotos') as Api['escolherFotosAula'],
   miniaturaAula: chamar('aula:miniatura') as Api['miniaturaAula'],
+  limparConversaAula: chamar('aula:limparConversa') as Api['limparConversaAula'],
+  fotoDaCamera: chamar('aula:fotoCamera') as Api['fotoDaCamera'],
+  prepararDitado: chamar('aula:prepararDitado') as Api['prepararDitado'],
+  ditar: chamar('aula:ditar') as Api['ditar'],
+  abrirIdiomasDoWindows: chamar('aula:abrirIdiomas') as Api['abrirIdiomasDoWindows'],
   salvarAulaNoVault: chamar('aula:salvarNoVault') as Api['salvarAulaNoVault']
 }
 

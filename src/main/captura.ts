@@ -334,6 +334,14 @@ export function dadosFalsosDeAula(repo: Repositorio, agora: number): void {
     {
       progresso: { '1': 'acertei', '2': 'acertei', '3': 'parcial', '4': 'errei' },
       conversa: [
+        { de: 'aluno', texto: 'No 3 deu y′ = −sen(2x) · e^(cos 2x).', quando: agora - 30 * 60_000, fotos: [], exercicio: 3 },
+        {
+          de: 'professor',
+          texto: 'Quase: você derivou a exponencial e o cosseno, mas esqueceu a terceira camada. O 2x de dentro do cosseno dá mais um fator **2**. Marquei como certo em parte.',
+          quando: agora - 29 * 60_000,
+          fotos: [],
+          exercicio: 3
+        },
         { de: 'aluno', texto: 'Deu y′ = (2y − x²) / (y² − x).', quando: agora - 20 * 60_000, fotos: [], exercicio: 4 },
         {
           de: 'professor',

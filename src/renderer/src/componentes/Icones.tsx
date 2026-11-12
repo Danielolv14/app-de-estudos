@@ -170,3 +170,19 @@ export const IconeDica = ({ tamanho = 15 }: P) => (
     <path d="M12 3.5a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V17h5v-.6c0-.8.4-1.5 1-2A6 6 0 0 0 12 3.5z" />
   </svg>
 )
+
+/** Foto que já está no PC (o IconeFoto, a câmera, é para tirar na hora). */
+export const IconeImagem = ({ tamanho = 16 }: P) => (
+  <svg {...base(tamanho)}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+    <circle cx="9" cy="10" r="1.7" />
+    <path d="M20.5 15.5l-4.5-4.5-8.5 8.5" />
+  </svg>
+)
+
+export const IconeMicrofone = ({ tamanho = 16 }: P) => (
+  <svg {...base(tamanho)}>
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" />
+  </svg>
+)

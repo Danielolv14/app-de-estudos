@@ -7,7 +7,8 @@ import { sugerirPdfs } from '@shared/canvas'
 import { dataLocal, diaMes, nomeDiaSemana, somarDias } from '@shared/regras'
 import { siglaDe } from '@shared/sigla'
 import { estiloMateria, Led, nomeDe } from '../componentes/Basicos'
-import { IconeDica, IconeEnviar, IconeFechar, IconeFoto, IconeMais, IconeSeta } from '../componentes/Icones'
+import { IconeDica, IconeEnviar, IconeFechar, IconeFoto, IconeImagem, IconeMais, IconeMicrofone, IconeSeta } from '../componentes/Icones'
+import { Camera } from '../componentes/Camera'
 import { PdfsDoCanvas, type PdfEscolhido } from '../componentes/Canvas'
 import { TextoLinha, TextoRico } from '../componentes/TextoRico'
 import { useAgora } from '../usarEstado'
@@ -648,7 +649,7 @@ function Exercicio({ aulaId, e, situacao, responder }: { aulaId: number; e: Exer
     } else setConfirmar(true)
   }
   return (
-    <li className={`questao exercicio ${situacao ? `questao--${CLASSE_SITUACAO[situacao]}` : ''}`}>
+    <li id={`exercicio-${e.numero}`} className={`questao exercicio ${situacao ? `questao--${CLASSE_SITUACAO[situacao]}` : ''}`}>
       <div className="questao__topo">
         <strong>Exercício {e.numero}</strong>
         <span className="mudo">{e.origem}</span>
@@ -716,6 +717,26 @@ function Exercicio({ aulaId, e, situacao, responder }: { aulaId: number; e: Exer
 
 // ---------- Professor (dúvidas e correção) ----------
 
+const MAX_FOTOS = 6
+/** Mensagens que aparecem abertas; as mais antigas ficam recolhidas (cada resposta é um par: você e o professor). */
+const MENSAGENS_A_VISTA = 4
+
+/** Nome da foto na ficha: as da câmera viram "Foto da câmera 1, 2..." no lugar do nome do arquivo. */
+const daCamera = (f: string) => /^camera-\d+(-\d+)?\.\w+$/.test(nomeDoArquivo(f))
+const rotuloFoto = (f: string, todas: string[]) =>
+  daCamera(f) ? `Foto da câmera ${todas.filter(daCamera).indexOf(f) + 1}` : nomeDoArquivo(f)
+
+/** Leva até o exercício na lista lá em cima e pisca a borda dele. */
+function verNaAula(numero: number) {
+  const el = document.getElementById(`exercicio-${numero}`)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  el.classList.remove('questao--destaque')
+  void el.offsetWidth
+  el.classList.add('questao--destaque')
+  setTimeout(() => el.classList.remove('questao--destaque'), 1800)
+}
+
 function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; responder: { numero: number; vez: number } | null }) {
   const agora = useAgora(estado)
   const [texto, setTexto] = useState('')
@@ -724,11 +745,23 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
   const [enviando, setEnviando] = useState<{ texto: string; fotos: string[]; exercicio: number | null } | null>(null)
   const [erro, setErro] = useState('')
   const [arrastando, setArrastando] = useState(false)
+  const [camera, setCamera] = useState(false)
+  const [ditado, setDitado] = useState<'parado' | 'abrindo' | 'sem-portugues' | 'erro'>('parado')
+  const [verAntigas, setVerAntigas] = useState(false)
+  const [limpar, setLimpar] = useState(false)
   const painel = useRef<HTMLDivElement>(null)
   const compositor = useRef<HTMLFormElement>(null)
   const campo = useRef<HTMLTextAreaElement>(null)
   const trabalho = estado.ia.trabalho
   const respondendo = trabalho?.tipo === 'professor' && trabalho.aulaId === aula.id
+  const exercicios = aula.conteudo.exercicios
+  const atual = exercicios.find((x) => x.numero === exercicio)
+  const posicao = atual ? exercicios.indexOf(atual) : -1
+
+  // O ditado usa um PowerShell em segundo plano: abre agora, para o primeiro clique em Falar não esperar.
+  useEffect(() => {
+    void window.api.prepararDitado()
+  }, [])
 
   // O campo de escrever está na tela? Se não estiver, aparece o atalho no canto.
   const [aVista, setAVista] = useState(true)
@@ -743,28 +776,38 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
     obs.observe(el)
     return () => obs.disconnect()
   }, [])
-  // Resposta que chegou enquanto ele estava lendo a aula lá em cima.
+  // Resposta que chegou enquanto ele estava lendo a aula lá em cima. (Depois de limpar, a conta recomeça.)
   const [lidas, setLidas] = useState(aula.conversa.length)
   useEffect(() => {
-    if (aVista) setLidas(aula.conversa.length)
+    if (aVista || aula.conversa.length < lidas) setLidas(aula.conversa.length)
   }, [aVista, aula.conversa.length])
   const novidade = aula.conversa.length > lidas
 
+  useEffect(() => {
+    if (!limpar) return
+    const t = setTimeout(() => setLimpar(false), 4000)
+    return () => clearTimeout(t)
+  }, [limpar])
+
   const ultimaMensagem = () => painel.current?.querySelector('.conversa > li:last-child')
   function irParaEscrever() {
-    compositor.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    setTimeout(() => campo.current?.focus({ preventScroll: true }), 400)
+    // Depois de desenhar: o enunciado do exercício entra em cima do campo e muda a altura.
+    setTimeout(() => compositor.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 50)
+    setTimeout(() => campo.current?.focus({ preventScroll: true }), 450)
   }
   function irAoProfessor() {
     if (novidade) ultimaMensagem()?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     else irParaEscrever()
   }
+  function responderAo(numero: number) {
+    setExercicio(numero)
+    irParaEscrever()
+  }
 
-  // "Mandar a resposta" num exercício: desce até aqui, já com o exercício escolhido.
+  // "Mandar a resposta" num exercício: desce até aqui, já com o exercício e o enunciado dele à vista.
   useEffect(() => {
     if (!responder) return
-    setExercicio(responder.numero)
-    irParaEscrever()
+    responderAo(responder.numero)
   }, [responder?.vez])
 
   // Mensagem nova (não ao abrir a aula): mostra o começo dela, mas só se ele estiver aqui embaixo.
@@ -777,11 +820,14 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
       ultimaMensagem()?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [aula.conversa.length, respondendo])
 
-  async function mandar(e?: FormEvent) {
+  const juntarFotos = (novas: string[]) => [...fotos, ...novas.filter((n) => !fotos.includes(n))].slice(0, MAX_FOTOS)
+
+  async function mandar(e?: FormEvent, maisFotos: string[] = []) {
     e?.preventDefault()
-    if (respondendo || (!texto.trim() && fotos.length === 0)) return
+    const todas = juntarFotos(maisFotos)
+    if (respondendo || trabalho || (!texto.trim() && todas.length === 0)) return
     setErro('')
-    const pedido = { texto, fotos, exercicio }
+    const pedido = { texto, fotos: todas, exercicio }
     setEnviando(pedido)
     const r = await window.api.perguntarAula({ aulaId: aula.id, ...pedido })
     setEnviando(null)
@@ -789,34 +835,88 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
       setTexto('')
       setFotos([])
       setExercicio(null)
-    } else if (r.mensagem !== 'Cancelado.') setErro(r.mensagem)
+    } else {
+      // As fotos da câmera ficam na mensagem, para tentar de novo.
+      setFotos(todas)
+      if (r.mensagem !== 'Cancelado.') setErro(r.mensagem)
+    }
+  }
+
+  async function falar() {
+    // O ditado do Windows escreve no campo que está com o foco.
+    campo.current?.focus({ preventScroll: true })
+    setDitado('abrindo')
+    const r = await window.api.ditar()
+    setDitado(r === 'ok' ? 'parado' : r)
   }
 
   function soltar(e: DragEvent) {
     e.preventDefault()
     setArrastando(false)
     const caminhos = [...e.dataTransfer.files].map((f) => window.api.caminhoDe(f)).filter(Boolean)
-    setFotos([...fotos, ...caminhos.filter((c) => !fotos.includes(c))].slice(0, 6))
+    setFotos(juntarFotos(caminhos))
   }
 
+  const conversa = aula.conversa
+  const escondidas = verAntigas ? 0 : Math.max(0, conversa.length - MENSAGENS_A_VISTA)
+  const ultimaDoProfessor = conversa.length > 0 && conversa[conversa.length - 1].de === 'professor' ? conversa.length - 1 : -1
   const segundos = respondendo && trabalho ? Math.max(0, Math.floor((agora - trabalho.desde) / 1000)) : 0
   return (
     <div className="painel professor" ref={painel}>
-      <h2>
-        Professor <span className="titulo-apagado">tire dúvidas e mande as suas respostas</span>
-      </h2>
-      {aula.conversa.length === 0 && !enviando && !respondendo && (
+      <div className="professor__topo">
+        <h2>
+          Professor <span className="titulo-apagado">tire dúvidas e mande as suas respostas</span>
+        </h2>
+        {conversa.length > 0 && (
+          <button
+            className={`tecla tecla--pequena ${limpar ? 'tecla--confirmar' : ''}`}
+            disabled={respondendo || !!enviando}
+            title="Apaga as mensagens e as fotos da conversa. As marcas dos exercícios ficam."
+            onClick={() => {
+              if (!limpar) return setLimpar(true)
+              setLimpar(false)
+              setVerAntigas(false)
+              void window.api.limparConversaAula(aula.id).then((r) => !r.ok && setErro(r.mensagem))
+            }}
+          >
+            {limpar ? 'Apagar a conversa?' : 'Limpar conversa'}
+          </button>
+        )}
+      </div>
+      {conversa.length === 0 && !enviando && !respondendo && (
         <p className="mudo professor__dica">
-          Pergunte o que não entendeu, peça outro exemplo ou mande a resolução de um exercício, escrita ou em foto. O professor corrige, mostra onde
-          errou e marca o exercício.
+          Pergunte o que não entendeu, peça outro exemplo ou mande a resolução de um exercício, escrita, falada ou em foto. O professor corrige,
+          mostra onde errou e marca o exercício.
         </p>
       )}
-      {(aula.conversa.length > 0 || enviando || respondendo) && (
+      {(conversa.length > 0 || enviando || respondendo) && (
         <ul className="conversa">
-          {aula.conversa.map((m, i) => (
-            <Mensagem key={i} aulaId={aula.id} m={m} />
-          ))}
-          {enviando && <Mensagem aulaId={aula.id} m={{ de: 'aluno', texto: enviando.texto, quando: 0, fotos: [], exercicio: enviando.exercicio }} fotosLocais={enviando.fotos.length} />}
+          {escondidas > 0 && (
+            <li className="conversa__anteriores">
+              <button className="botao-texto" onClick={() => setVerAntigas(true)}>
+                Mostrar as {escondidas} mensagens anteriores
+              </button>
+            </li>
+          )}
+          {conversa.map((m, i) =>
+            i < escondidas ? null : (
+              <Mensagem
+                key={i}
+                aulaId={aula.id}
+                m={m}
+                exercicios={exercicios}
+                responderDeNovo={i === ultimaDoProfessor && m.exercicio !== null && !respondendo ? () => responderAo(m.exercicio!) : undefined}
+              />
+            )
+          )}
+          {enviando && (
+            <Mensagem
+              aulaId={aula.id}
+              m={{ de: 'aluno', texto: enviando.texto, quando: 0, fotos: [], exercicio: enviando.exercicio }}
+              exercicios={exercicios}
+              fotosLocais={enviando.fotos.length}
+            />
+          )}
           {respondendo && (
             <li className="msg msg--professor msg--pensando">
               <span className="msg__quem">Professor</span>
@@ -855,6 +955,17 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
         onDragLeave={() => setArrastando(false)}
         onDrop={soltar}
       >
+        {atual && (
+          <ExercicioAtual
+            key={atual.numero}
+            e={atual}
+            situacao={aula.progresso[String(atual.numero)] ?? null}
+            anterior={posicao > 0 ? exercicios[posicao - 1].numero : null}
+            proximo={posicao < exercicios.length - 1 ? exercicios[posicao + 1].numero : null}
+            trocar={(n) => setExercicio(n)}
+            tirar={() => setExercicio(null)}
+          />
+        )}
         <textarea
           ref={campo}
           className="campo-area"
@@ -880,7 +991,7 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
             disabled={respondendo}
           >
             <option value="">Dúvida</option>
-            {aula.conteudo.exercicios.map((x) => (
+            {exercicios.map((x) => (
               <option key={x.numero} value={x.numero}>
                 Resposta do exercício {x.numero}
               </option>
@@ -889,20 +1000,44 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
           <button
             type="button"
             className="tecla tecla--pequena"
-            disabled={respondendo}
-            onClick={() => void window.api.escolherFotosAula().then((novas) => setFotos([...fotos, ...novas.filter((n) => !fotos.includes(n))].slice(0, 6)))}
+            disabled={respondendo || ditado === 'abrindo'}
+            onClick={() => void falar()}
+            title="Abre o ditado do Windows (Win+H): fale e o texto aparece no campo"
+          >
+            <IconeMicrofone />
+            {ditado === 'abrindo' ? 'Abrindo...' : 'Falar'}
+          </button>
+          <button
+            type="button"
+            className="tecla tecla--pequena"
+            disabled={respondendo || fotos.length >= MAX_FOTOS}
+            onClick={() => setCamera(true)}
+            title="Tira a foto da folha na hora, pela webcam ou pelo celular (iVCam)"
           >
             <IconeFoto />
-            Foto
+            Câmera
           </button>
-          {fotos.map((f) => (
-            <span key={f} className="ficha-arquivo">
-              <span>{nomeDoArquivo(f)}</span>
-              <button type="button" className="botao-texto" onClick={() => setFotos(fotos.filter((x) => x !== f))} aria-label={`Tirar ${nomeDoArquivo(f)}`}>
-                <IconeFechar />
-              </button>
-            </span>
-          ))}
+          <button
+            type="button"
+            className="tecla tecla--pequena"
+            disabled={respondendo || fotos.length >= MAX_FOTOS}
+            onClick={() => void window.api.escolherFotosAula().then((novas) => setFotos(juntarFotos(novas)))}
+            title="Escolhe uma foto que já está no PC (ou arraste para cá)"
+          >
+            <IconeImagem />
+            Do PC
+          </button>
+          {fotos.map((f) => {
+            const nome = rotuloFoto(f, fotos)
+            return (
+              <span key={f} className="ficha-arquivo">
+                <span>{nome}</span>
+                <button type="button" className="botao-texto" onClick={() => setFotos(fotos.filter((x) => x !== f))} aria-label={`Tirar ${nome}`}>
+                  <IconeFechar />
+                </button>
+              </span>
+            )
+          })}
           <span className="compositor__espaco" />
           {respondendo ? (
             <button type="button" className="tecla tecla--pequena" onClick={() => void window.api.cancelarIa()}>
@@ -916,19 +1051,183 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
           )}
         </div>
       </form>
+      {ditado === 'sem-portugues' && (
+        <div className="aviso-ditado">
+          <p>
+            <strong>O ditado precisa do português no Windows.</strong> O ditado do Windows escreve no idioma do teclado, e este PC só tem o
+            inglês: o texto sairia em inglês. Em Configurações, vá em Hora e idioma &gt; Idioma e região &gt; Adicionar um idioma e escolha{' '}
+            <strong>Português (Brasil)</strong>. Depois, nas opções dele, adicione o teclado <strong>Estados Unidos</strong> e remova o ABNT2: assim
+            as teclas continuam iguais. Feito isso, o Falar já troca para o português sozinho.
+          </p>
+          <div className="aviso-ditado__botoes">
+            <button className="tecla tecla--pequena" onClick={() => void window.api.abrirIdiomasDoWindows()}>
+              Abrir as configurações de idioma
+            </button>
+            <button className="botao-texto" onClick={() => setDitado('parado')}>
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+      {ditado === 'erro' && <p className="erro-ia">Não consegui abrir o ditado. Clique no campo e aperte Win+H (a tecla do Windows e o H juntas).</p>}
       {erro && <p className="erro-ia">{erro}</p>}
+      {camera && (
+        <Camera
+          vagas={MAX_FOTOS - fotos.length}
+          podeMandar={!trabalho && !!estado.ia.claude}
+          fechar={() => setCamera(false)}
+          aoJuntar={(caminhos) => {
+            setFotos(juntarFotos(caminhos))
+            setCamera(false)
+            irParaEscrever()
+          }}
+          aoMandar={(caminhos) => {
+            setCamera(false)
+            void mandar(undefined, caminhos)
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function Mensagem({ aulaId, m, fotosLocais = 0 }: { aulaId: number; m: MensagemAula; fotosLocais?: number }) {
+/**
+ * O exercício que ele está respondendo, em cima do campo de escrever: não precisa subir até a lista para reler
+ * o enunciado. As setas trocam de exercício; o gabarito só aparece depois de uma tentativa (como na lista).
+ */
+function ExercicioAtual({
+  e,
+  situacao,
+  anterior,
+  proximo,
+  trocar,
+  tirar
+}: {
+  e: ExercicioAula
+  situacao: SituacaoExercicio | null
+  anterior: number | null
+  proximo: number | null
+  trocar: (numero: number) => void
+  tirar: () => void
+}) {
+  const [verDica, setVerDica] = useState(false)
+  const [verGabarito, setVerGabarito] = useState(false)
+  return (
+    <div className={`exercicio-atual ${situacao ? `exercicio-atual--${CLASSE_SITUACAO[situacao]}` : ''}`}>
+      <div className="exercicio-atual__topo">
+        <strong>Exercício {e.numero}</strong>
+        <span className={`nivel nivel--${e.nivel}`}>{NOME_NIVEL[e.nivel]}</span>
+        {situacao && <span className={`exercicio-atual__situacao exercicio-atual__situacao--${situacao}`}>{NOME_SITUACAO[situacao]}</span>}
+        <span className="compositor__espaco" />
+        <button type="button" className="botao-texto" onClick={() => verNaAula(e.numero)} title="Leva até o exercício na lista">
+          Ver na aula
+        </button>
+        <button
+          type="button"
+          className="tecla tecla--pequena tecla--icone"
+          disabled={anterior === null}
+          onClick={() => anterior !== null && trocar(anterior)}
+          aria-label="Exercício anterior"
+          title="Exercício anterior"
+        >
+          <IconeSeta esquerda tamanho={14} />
+        </button>
+        <button
+          type="button"
+          className="tecla tecla--pequena tecla--icone"
+          disabled={proximo === null}
+          onClick={() => proximo !== null && trocar(proximo)}
+          aria-label="Próximo exercício"
+          title="Próximo exercício"
+        >
+          <IconeSeta tamanho={14} />
+        </button>
+        <button type="button" className="botao-texto" onClick={tirar} aria-label="Não é a resposta de um exercício" title="Não é a resposta de um exercício">
+          <IconeFechar />
+        </button>
+      </div>
+      <p className="exercicio-atual__enunciado">
+        <TextoLinha texto={e.enunciado} />
+      </p>
+      {verDica && e.dica && (
+        <div className="exercicio__dica">
+          <IconeDica />
+          <p>
+            <TextoLinha texto={e.dica} />
+          </p>
+        </div>
+      )}
+      {verGabarito && (
+        <div className="questao__resolucao">
+          <strong>Resolução</strong>
+          <TextoRico texto={e.resolucao} />
+          {e.resposta && (
+            <p className="questao__resposta">
+              <strong>Resposta:</strong> <TextoLinha texto={e.resposta} />
+            </p>
+          )}
+        </div>
+      )}
+      {(e.dica || situacao) && (
+        <div className="exercicio-atual__acoes">
+          {e.dica && (
+            <button type="button" className="botao-texto" onClick={() => setVerDica(!verDica)}>
+              {verDica ? 'Esconder a dica' : 'Dica'}
+            </button>
+          )}
+          {situacao && (
+            <button type="button" className="botao-texto" onClick={() => setVerGabarito(!verGabarito)}>
+              {verGabarito ? 'Esconder o gabarito' : 'Gabarito'}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Mensagem({
+  aulaId,
+  m,
+  exercicios,
+  fotosLocais = 0,
+  responderDeNovo
+}: {
+  aulaId: number
+  m: MensagemAula
+  exercicios: ExercicioAula[]
+  fotosLocais?: number
+  /** Só na última correção do professor: volta ao campo com o mesmo exercício. */
+  responderDeNovo?: () => void
+}) {
+  const [verEnunciado, setVerEnunciado] = useState(false)
+  const ex = m.exercicio !== null ? exercicios.find((x) => x.numero === m.exercicio) : undefined
   const fotos = m.fotos.length + fotosLocais
   return (
     <li className={`msg msg--${m.de}`}>
       <span className="msg__quem">
         {m.de === 'aluno' ? 'Você' : 'Professor'}
-        {m.exercicio !== null ? ` · exercício ${m.exercicio}` : ''}
+        {ex ? (
+          <>
+            {' · '}
+            <button className="msg__exercicio" onClick={() => setVerEnunciado(!verEnunciado)} aria-expanded={verEnunciado} title="Mostra o enunciado aqui">
+              exercício {ex.numero}
+            </button>
+          </>
+        ) : m.exercicio !== null ? (
+          ` · exercício ${m.exercicio}`
+        ) : (
+          ''
+        )}
       </span>
+      {verEnunciado && ex && (
+        <div className="msg__enunciado">
+          <TextoLinha texto={ex.enunciado} />{' '}
+          <button className="botao-texto" onClick={() => verNaAula(ex.numero)}>
+            Ver na aula
+          </button>
+        </div>
+      )}
       {m.texto && <TextoRico texto={m.texto} className="msg__texto" />}
       {m.fotos.length > 0 && (
         <div className="msg__fotos">
@@ -938,6 +1237,11 @@ function Mensagem({ aulaId, m, fotosLocais = 0 }: { aulaId: number; m: MensagemA
         </div>
       )}
       {fotosLocais > 0 && <p className="mudo">{fotos === 1 ? 'Uma foto da resolução' : `${fotos} fotos da resolução`}</p>}
+      {responderDeNovo && (
+        <button className="botao-texto msg__de-novo" onClick={responderDeNovo}>
+          Responder o exercício {m.exercicio} de novo
+        </button>
+      )}
     </li>
   )
 }

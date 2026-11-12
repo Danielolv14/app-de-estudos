@@ -318,4 +318,39 @@ describe('aula com a IA', () => {
     expect(m.repo.aulas()).toEqual([])
     expect(existsSync(m.ia.pastaAula(aulaId))).toBe(false)
   })
+
+  it('limpar a conversa apaga as mensagens e as fotos dela, e deixa o material e as marcas', async () => {
+    const m = await comAula([
+      () => ok({ resposta: 'Certo!', exercicio: 1, situacao: 'acertei' }),
+      () => ok({ resposta: 'Por causa da regra da cadeia.', exercicio: null, situacao: null })
+    ])
+    const aulaId = m.repo.aulas()[0].id
+    const foto = arquivo(mkdtempSync(join(tmpdir(), 'fotos-')), 'folha.jpg')
+    await m.ia.perguntar({ aulaId, texto: '', fotos: [foto], exercicio: 1 })
+    await m.ia.perguntar({ aulaId, texto: 'Por que multiplica?', fotos: [], exercicio: null })
+    const antes = m.repo.aula(aulaId)!
+    expect(antes.conversa).toHaveLength(4)
+    const pasta = m.ia.pastaAula(aulaId)
+    expect(readdirSync(pasta).filter((f) => f.startsWith('resposta-'))).toHaveLength(1)
+
+    expect(m.ia.limparConversa(aulaId)).toEqual({ ok: true, mensagem: 'Conversa com o professor limpa.' })
+    const depois = m.repo.aula(aulaId)!
+    expect(depois.conversa).toEqual([])
+    expect(depois.progresso).toEqual({ '1': 'acertei' })
+    expect(depois.atualizadaEm).toBeGreaterThanOrEqual(antes.atualizadaEm)
+    expect(readdirSync(pasta).sort()).toEqual(['Slides 3.4.pdf', 'lista_3 derivadas_.pdf'])
+    expect(m.ia.limparConversa(999)).toMatchObject({ ok: false })
+  })
+
+  it('não limpa a conversa enquanto o professor responde', async () => {
+    let soltar: (r: RespostaClaude) => void = () => undefined
+    const resposta = new Promise<RespostaClaude>((r) => (soltar = r))
+    const m = await comAula([() => resposta])
+    const aulaId = m.repo.aulas()[0].id
+    const pergunta = m.ia.perguntar({ aulaId, texto: 'Dúvida', fotos: [], exercicio: null })
+    expect(m.ia.limparConversa(aulaId)).toEqual({ ok: false, mensagem: 'Espere o professor terminar de responder.' })
+    soltar(ok({ resposta: 'Ok.', exercicio: null, situacao: null }))
+    await pergunta
+    expect(m.repo.aula(aulaId)!.conversa).toHaveLength(2)
+  })
 })
