@@ -749,6 +749,8 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
   const [ditado, setDitado] = useState<'parado' | 'abrindo' | 'sem-portugues' | 'erro'>('parado')
   const [verAntigas, setVerAntigas] = useState(false)
   const [limpar, setLimpar] = useState(false)
+  /** Onde ele estava no chat antes de ir ver a questão na aula (para o "Voltar ao chat" levar de volta ao mesmo lugar). */
+  const [volta, setVolta] = useState<number | null>(null)
   const painel = useRef<HTMLDivElement>(null)
   const compositor = useRef<HTMLFormElement>(null)
   const campo = useRef<HTMLTextAreaElement>(null)
@@ -780,6 +782,7 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
   const [lidas, setLidas] = useState(aula.conversa.length)
   useEffect(() => {
     if (aVista || aula.conversa.length < lidas) setLidas(aula.conversa.length)
+    if (aVista) setVolta(null)
   }, [aVista, aula.conversa.length])
   const novidade = aula.conversa.length > lidas
 
@@ -802,6 +805,18 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
   function responderAo(numero: number) {
     setExercicio(numero)
     irParaEscrever()
+  }
+  const rolagem = () => painel.current?.closest('.conteudo') ?? null
+  /** Vai até o exercício na lista lá em cima, guardando o ponto do chat para voltar. */
+  function irPraQuestao(numero: number) {
+    setVolta(rolagem()?.scrollTop ?? null)
+    verNaAula(numero)
+  }
+  function voltarAoChat() {
+    const r = rolagem()
+    if (r && volta !== null) r.scrollTo({ top: volta, behavior: 'smooth' })
+    else irParaEscrever()
+    setVolta(null)
   }
 
   // "Mandar a resposta" num exercício: desce até aqui, já com o exercício e o enunciado dele à vista.
@@ -883,6 +898,42 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
           </button>
         )}
       </div>
+      {exercicios.length > 0 && (
+        <div className="professor__questoes">
+          <div className="questoes-barra" role="group" aria-label="Escolher o exercício">
+            <span className="questoes-barra__rotulo">Exercício</span>
+            {exercicios.map((x) => {
+              const s = aula.progresso[String(x.numero)]
+              const escolhido = x.numero === exercicio
+              return (
+                <button
+                  key={x.numero}
+                  type="button"
+                  className={`questoes-barra__num ${s ? `questoes-barra__num--${s}` : ''} ${escolhido ? 'questoes-barra__num--atual' : ''}`}
+                  aria-pressed={escolhido}
+                  title={`Exercício ${x.numero}${s ? `: ${NOME_SITUACAO[s]}` : ''}${escolhido ? ' (clique de novo para tirar)' : ''}`}
+                  onClick={() => setExercicio(escolhido ? null : x.numero)}
+                >
+                  {x.numero}
+                </button>
+              )
+            })}
+            {!atual && <span className="questoes-barra__dica">Escolha um para ver o enunciado aqui e mandar a resposta. Sem exercício, a mensagem vai como dúvida.</span>}
+          </div>
+          {atual && (
+            <ExercicioAtual
+              key={atual.numero}
+              e={atual}
+              situacao={aula.progresso[String(atual.numero)] ?? null}
+              anterior={posicao > 0 ? exercicios[posicao - 1].numero : null}
+              proximo={posicao < exercicios.length - 1 ? exercicios[posicao + 1].numero : null}
+              trocar={(n) => setExercicio(n)}
+              tirar={() => setExercicio(null)}
+              verNaAula={() => irPraQuestao(atual.numero)}
+            />
+          )}
+        </div>
+      )}
       {conversa.length === 0 && !enviando && !respondendo && (
         <p className="mudo professor__dica">
           Pergunte o que não entendeu, peça outro exemplo ou mande a resolução de um exercício, escrita, falada ou em foto. O professor corrige,
@@ -905,6 +956,7 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
                 aulaId={aula.id}
                 m={m}
                 exercicios={exercicios}
+                verNaAula={irPraQuestao}
                 responderDeNovo={i === ultimaDoProfessor && m.exercicio !== null && !respondendo ? () => responderAo(m.exercicio!) : undefined}
               />
             )
@@ -914,6 +966,7 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
               aulaId={aula.id}
               m={{ de: 'aluno', texto: enviando.texto, quando: 0, fotos: [], exercicio: enviando.exercicio }}
               exercicios={exercicios}
+              verNaAula={irPraQuestao}
               fotosLocais={enviando.fotos.length}
             />
           )}
@@ -928,7 +981,7 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
         </ul>
       )}
       {!aVista && (
-        <button className={`ir-professor ${novidade ? 'ir-professor--novo' : ''}`} onClick={irAoProfessor}>
+        <button className={`ir-professor ${novidade ? 'ir-professor--novo' : ''}`} onClick={volta !== null && !novidade ? voltarAoChat : irAoProfessor}>
           {respondendo ? (
             <>
               <Led aceso cor="ambar" /> O professor está respondendo
@@ -936,6 +989,10 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
           ) : novidade ? (
             <>
               <IconeSeta tamanho={15} /> Resposta nova do professor
+            </>
+          ) : volta !== null ? (
+            <>
+              <IconeSeta tamanho={15} /> Voltar ao chat
             </>
           ) : (
             <>
@@ -955,17 +1012,6 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
         onDragLeave={() => setArrastando(false)}
         onDrop={soltar}
       >
-        {atual && (
-          <ExercicioAtual
-            key={atual.numero}
-            e={atual}
-            situacao={aula.progresso[String(atual.numero)] ?? null}
-            anterior={posicao > 0 ? exercicios[posicao - 1].numero : null}
-            proximo={posicao < exercicios.length - 1 ? exercicios[posicao + 1].numero : null}
-            trocar={(n) => setExercicio(n)}
-            tirar={() => setExercicio(null)}
-          />
-        )}
         <textarea
           ref={campo}
           className="campo-area"
@@ -983,20 +1029,7 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
           }
         />
         <div className="compositor__linha">
-          <select
-            className="seletor seletor--mini"
-            value={exercicio ?? ''}
-            onChange={(e) => setExercicio(e.target.value ? Number(e.target.value) : null)}
-            aria-label="Sobre o quê"
-            disabled={respondendo}
-          >
-            <option value="">Dúvida</option>
-            {exercicios.map((x) => (
-              <option key={x.numero} value={x.numero}>
-                Resposta do exercício {x.numero}
-              </option>
-            ))}
-          </select>
+          <span className="compositor__sobre">{exercicio !== null ? `Resposta do exercício ${exercicio}` : 'Dúvida'}</span>
           <button
             type="button"
             className="tecla tecla--pequena"
@@ -1092,8 +1125,8 @@ function Professor({ estado, aula, responder }: { estado: Estado; aula: TAula; r
 }
 
 /**
- * O exercício que ele está respondendo, em cima do campo de escrever: não precisa subir até a lista para reler
- * o enunciado. As setas trocam de exercício; o gabarito só aparece depois de uma tentativa (como na lista).
+ * O exercício escolhido, na barra presa no topo do chat: dá para reler o enunciado em qualquer ponto da conversa,
+ * sem subir até a lista. As setas trocam de exercício; o gabarito só aparece depois de uma tentativa (como na lista).
  */
 function ExercicioAtual({
   e,
@@ -1101,7 +1134,8 @@ function ExercicioAtual({
   anterior,
   proximo,
   trocar,
-  tirar
+  tirar,
+  verNaAula
 }: {
   e: ExercicioAula
   situacao: SituacaoExercicio | null
@@ -1109,6 +1143,7 @@ function ExercicioAtual({
   proximo: number | null
   trocar: (numero: number) => void
   tirar: () => void
+  verNaAula: () => void
 }) {
   const [verDica, setVerDica] = useState(false)
   const [verGabarito, setVerGabarito] = useState(false)
@@ -1119,7 +1154,7 @@ function ExercicioAtual({
         <span className={`nivel nivel--${e.nivel}`}>{NOME_NIVEL[e.nivel]}</span>
         {situacao && <span className={`exercicio-atual__situacao exercicio-atual__situacao--${situacao}`}>{NOME_SITUACAO[situacao]}</span>}
         <span className="compositor__espaco" />
-        <button type="button" className="botao-texto" onClick={() => verNaAula(e.numero)} title="Leva até o exercício na lista">
+        <button type="button" className="botao-texto" onClick={verNaAula} title="Leva até o exercício na lista; o botão do canto traz de volta ao chat">
           Ver na aula
         </button>
         <button
@@ -1191,12 +1226,14 @@ function Mensagem({
   m,
   exercicios,
   fotosLocais = 0,
-  responderDeNovo
+  responderDeNovo,
+  verNaAula
 }: {
   aulaId: number
   m: MensagemAula
   exercicios: ExercicioAula[]
   fotosLocais?: number
+  verNaAula: (numero: number) => void
   /** Só na última correção do professor: volta ao campo com o mesmo exercício. */
   responderDeNovo?: () => void
 }) {

@@ -812,6 +812,18 @@ async function capturar(pasta: string): Promise<void> {
       await js("(() => { const b = [...document.querySelectorAll('.msg__exercicio')].find((x) => x.textContent.includes('4')); b?.click(); b?.closest('.msg')?.scrollIntoView({ block: 'center' }) })()")
       await esperar(500)
       writeFileSync(join(pasta, 'aula-enunciado.png'), await foto(w.webContents))
+      // No meio da conversa, escolhe o exercício 4 na barra presa no topo, vai vê-lo na aula e volta ao chat.
+      await js("document.querySelector('.conversa > li:nth-child(2)')?.scrollIntoView({ block: 'center' })")
+      await esperar(300)
+      await js("[...document.querySelectorAll('.questoes-barra__num')].find((b) => b.textContent === '4')?.click()")
+      await esperar(400)
+      writeFileSync(join(pasta, 'aula-questoes.png'), await foto(w.webContents))
+      await js("[...document.querySelectorAll('.professor__questoes .botao-texto')].find((b) => b.textContent === 'Ver na aula')?.click()")
+      await esperar(1200)
+      writeFileSync(join(pasta, 'aula-ver-na-aula.png'), await foto(w.webContents))
+      await js("document.querySelector('.ir-professor')?.click()")
+      await esperar(1200)
+      writeFileSync(join(pasta, 'aula-voltou.png'), await foto(w.webContents))
       // Ditado sem português no Windows (o caso deste PC) e a câmera com a imagem de teste do Chromium.
       const botao = (texto: string) => `[...document.querySelectorAll('.compositor button, .camera button')].find((b) => b.textContent.trim() === '${texto}')?.click()`
       await js(botao('Falar'))

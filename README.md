@@ -51,7 +51,8 @@ O app manda para a IA o tema da tarefa, a próxima avaliação, onde travei no �
 (sugeridos do Canvas pelo nome). Ela devolve a ordem de estudo, as partes com fórmula e exemplo resolvido, as
 armadilhas e de 5 a 10 exercícios com dica e gabarito escondidos. O gabarito só abre depois de uma tentativa. Embaixo
 fica a conversa com o professor: mando a resposta escrita, falada (ditado do Windows) ou em foto, tirada na hora pela
-câmera do PC ou do celular. O enunciado do exercício fica em cima do campo de escrever, ele corrige e marca o exercício.
+câmera do PC ou do celular. Os números dos exercícios ficam presos no topo do chat: um clique mostra o enunciado ali, sem
+subir a tela, e "Ver na aula" leva até a questão com um "Voltar ao chat" no canto. Ele corrige e marca o exercício.
 
 <p align="center">
   <img src=".github/prints/aula.png" width="49%" alt="Aula gerada pela IA">
@@ -175,8 +176,10 @@ O app lê o Canvas (`https://pucminas.instructure.com`, pela API REST v1) com um
   `%APPDATA%\App de Estudos\aulas\<id>` para o professor reler nas perguntas. "Mais exercícios" foca nos errados, e
   "Salvar no Obsidian" grava a aula em Markdown no vault. O texto da IA aparece com passos, listas, negrito, expoente e
   índice (`src/shared/texto.ts` e `componentes/TextoRico.tsx`).
-- **Na conversa com o professor:** o enunciado do exercício escolhido aparece em cima do campo (com setas para o
-  próximo e "Ver na aula"), e o "exercício N" de cada mensagem abre o enunciado ali mesmo. Só as 4 últimas mensagens
+- **Na conversa com o professor:** uma barra presa no topo do chat (`position: sticky`) tem os números dos exercícios,
+  com a cor de como foi cada um. O escolhido mostra o enunciado ali (com setas, dica e, depois de tentar, o gabarito), e
+  "Ver na aula" guarda o ponto do chat para o "Voltar ao chat" do canto. O "exercício N" de cada mensagem abre o
+  enunciado ali mesmo. Só as 4 últimas mensagens
   ficam abertas, e "Limpar conversa" apaga as mensagens e as fotos delas (as marcas dos exercícios ficam).
 - **Câmera:** `componentes/Camera.tsx` usa o `getUserMedia` com a webcam ou o celular (iVCam), deixa conferir e juntar
   várias páginas, e o processo principal grava cada foto como arquivo (`src/main/camera.ts`) para seguir o caminho das
@@ -287,6 +290,7 @@ Sai em `dist/App-de-Estudos-<versão>-instalador.exe`. Instalar por cima atualiz
 | 1.5 | 10/11/2026 | Aula com a IA como professor, sigla da matéria e atalhos |
 | 1.5.1 | 11/11/2026 | PC dormindo não conta, bloqueio que falha fechado, atividades entregues fora dos avisos |
 | 1.6 | 11/11/2026 | Bloqueio agendado (seg a sex, 13:50 às 18:00); na Aula, enunciado junto do campo, limpar conversa, câmera ao vivo e ditado |
+| 1.6.1 | 11/11/2026 | Aula: barra dos exercícios presa no topo do chat e "Voltar ao chat" depois de ver a questão |
 
 ## Limites conhecidos
 
